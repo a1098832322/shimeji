@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema targetNamespace="http://www.group-finity.com/Mascot" elementFormDefault="qualified" xmlns="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://www.group-finity.com/Mascot">
+
+    <element name="Mascot" type="tns:Mascot" />
+    
+    <complexType name="Mascot">
+    	<sequence>
+    		<element name="ActionList" type="tns:ActionList" maxOccurs="unbounded" minOccurs="0" />
+    		<element name="BehaviorList" type="tns:BehaviorList" maxOccurs="unbounded" minOccurs="0" />
+    	</sequence>
+    </complexType>
+    
+    <complexType name="ActionList">
+    	<choice maxOccurs="unbounded" minOccurs="0" >
+    		<element name="Action" type="tns:TopAction" />
+    	</choice>
+    </complexType>
+    
+    <complexType name="ActionArguments" abstract="true">
+  		<attribute name="Condition" type="tns:Parameter" />
+  		<attribute name="Duration" type="tns:Parameter" />
+   		<attribute name="TargetX" type="tns:Parameter" />
+  		<attribute name="TargetY" type="tns:Parameter" />
+   		<attribute name="InitialVX" type="tns:Parameter" />
+  		<attribute name="InitialVY" type="tns:Parameter" />
+  		<attribute name="X" type="tns:Parameter" />
+  		<attribute name="Y" type="tns:Parameter" />
+  		<attribute name="LookRight" type="tns:Parameter" />
+   		<attribute name="IeOffsetX" type="tns:Parameter" />
+  		<attribute name="IeOffsetY" type="tns:Parameter" />
+  		<attribute name="Gap" type="tns:Parameter" />
+  		<attribute name="BornX" type="tns:Parameter" />
+  		<attribute name="BornY" type="tns:Parameter" />
+  		<attribute name="BornBehavior" type="tns:Parameter" />
+   		<attribute name="VelocityParam" type="tns:Parameter" />
+   		<attribute name="RegistanceX" type="tns:Parameter" />
+  		<attribute name="RegistanceY" type="tns:Parameter" />
+   		<attribute name="Gravity" type="tns:Parameter" />
+    </complexType>
+    
+    <complexType name="Action">
+	    <complexContent>
+	    	<extension base="tns:ActionArguments">
+				<choice>
+					<element name="Animation" type="tns:Animation" maxOccurs="unbounded" minOccurs="0" />
+					<sequence>
+						<choice maxOccurs="unbounded" minOccurs="0" >
+							<element name="ActionReference" type="tns:ActionReference"/>
+							<element name="Action" type="tns:LowerAction" />
+						</choice>
+					</sequence>
+				</choice>
+		   		<attribute name="Type" use="required">
+		    		<simpleType>
+		    			<restriction base="string">
+		    				<enumeration value="Embedded"></enumeration>
+		    				<enumeration value="Move"></enumeration>
+		    				<enumeration value="Pause"></enumeration>
+		    				<enumeration value="Fixed"></enumeration>
+		    				<enumeration value="Composite"></enumeration>
+		    				<enumeration value="Select"></enumeration>
+		    			</restriction>
+		    		</simpleType>
+		   		</attribute>
+		   		<attribute name="Class">
+		   			<simpleType>
+		   				<restriction base="string">
+		   					<pattern value="com\.group_finity\.mascot\.action\.[a-zA-Z][a-zA-Z0-9]+" />
+		   				</restriction>
+		   			</simpleType>
+		   		</attribute>
+		    	<attribute name="BorderType">
+		    		<simpleType>
+		    			<restriction base="string">
+		    				<enumeration value="Floor"></enumeration>
+		    				<enumeration value="Wall"></enumeration>
+		    				<enumeration value="Ceiling"></enumeration>
+		    			</restriction>
+		    		</simpleType>
+		    	</attribute>
+		    	<attribute name="Loop" type="tns:Parameter" />
+	    	</extension>
+	    </complexContent>
+    </complexType>
+    
+    <complexType name="TopAction">
+    	<complexContent>
+    		<extension base="tns:Action">
+		    	<attribute name="Name" type="string" use="required" />
+    		</extension>
+    	</complexContent>
+    </complexType>
+    
+    <complexType name="LowerAction">
+    	<complexContent>
+    		<extension base="tns:Action" />
+    	</complexContent>
+    </complexType>
+    
+    <complexType name="Animation">
+    	<sequence>
+    		<element name="Pose" type="tns:Pose" maxOccurs="unbounded" minOccurs="1" />
+    	</sequence>
+    	<attribute name="Condition" type="string" />
+    </complexType>
+    
+    <complexType name="Pose">
+   		<attribute name="Image" use="required">
+   			<simpleType>
+   				<restriction base="string">
+   					<pattern value=".+\.(png|gif|jpeg|jpg|bmp|PNG|GIF|JPEG|JPG|BMP)" />
+   				</restriction>
+   			</simpleType>
+   		</attribute>
+   		<attribute name="ImageAnchor" use="required">
+   			<simpleType>
+   				<restriction base="string">
+   					<pattern value="-?\d+,-?\d+" />
+   				</restriction>
+   			</simpleType>
+   		</attribute>
+   		<attribute name="Velocity" use="required">
+   			<simpleType>
+   				<restriction base="string">
+   					<pattern value="-?\d+,-?\d+" />
+   				</restriction>
+   			</simpleType>
+   		</attribute>
+   		<attribute name="Duration" type="int" use="required" />
+    </complexType>
+    
+    <complexType name="ActionReference">
+    	<complexContent>
+ 			<extension base="tns:ActionArguments">
+  				<attribute name="Name" type="string" use="required" />
+ 			</extension>
+    	</complexContent>
+    </complexType>
+
+    <complexType name="BehaviorList">
+	    <sequence>
+	    	<choice maxOccurs="unbounded" minOccurs="1" >
+		    	<element name="Behavior" type="tns:Behavior" />
+		    	<element name="Condition" type="tns:BehaviorCondition" />
+	    	</choice>
+	    </sequence>
+    </complexType>
+
+    <complexType name="Behavior">
+	    <sequence>
+	    	<choice maxOccurs="1" minOccurs="0" >
+		    	<element name="NextBehaviorList" type="tns:NextBehaviorList" />
+	    	</choice>
+	    </sequence>
+  		<attribute name="Name" type="string" use="required" />
+  		<attribute name="Frequency" type="int" use="required" />
+  		<attribute name="Condition" type="tns:Parameter" />
+  		<attribute name="Hidden" type="boolean" />
+    </complexType>
+    
+    <complexType name="NextBehaviorList">
+	    <sequence>
+	    	<choice maxOccurs="unbounded" minOccurs="1" >
+		    	<element name="BehaviorReference" type="tns:BehaviorReference" />
+		    	<element name="Condition" type="tns:BehaviorReferenceCondition" />
+	    	</choice>
+	    </sequence>
+	    <attribute name="Add" type="boolean" use="required" />
+    </complexType>
+    
+    <complexType name="BehaviorReferenceCondition">
+    	<complexContent>
+    		<extension base="tns:NextBehaviorList">
+    			<attribute name="Condition" type="string" />
+    		</extension>
+    	</complexContent>
+    </complexType>
+    
+    <complexType name="BehaviorReference">
+  		<attribute name="Name" type="string" use="required" />
+  		<attribute name="Frequency" type="int" use="required" />
+  		<attribute name="Condition" type="tns:Parameter" />
+    </complexType>
+    
+    <complexType name="BehaviorCondition">
+    	<complexContent>
+    		<extension base="tns:BehaviorList">
+    			<attribute name="Condition" type="tns:Parameter" />
+    		</extension>
+    	</complexContent>
+    </complexType>
+    
+    <simpleType name="Parameter">
+    	<restriction base="string">
+    		<pattern value="([$#]\{.+\})|(\-?[0-9]+(\.[0-9]+)?)|true|false" />
+    	</restriction>
+    </simpleType>
+    
+</schema>
