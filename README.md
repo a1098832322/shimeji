@@ -13,6 +13,13 @@
   <li>mvn clean install</li>
 </ol>
 
+<b><li>仅运行项目</li></b>
+<ol>
+  <li>下载项目zip压缩包</li>
+  <li>配置JRE运行环境(已有环境请忽略)</li>
+  <li>打开Project Test文件夹，双击运行shimeji.jar或双击运行 “ 点我运行.cmd ” 即可成功运行项目</li>
+</ol>
+
 <b>* 注意：需要先指定Constant中的isDevEnvironment值，true为开发环境，方便在IDE下调试，当编译打包时需要先改为false</b>
 <br>
 <br>
