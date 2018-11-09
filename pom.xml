@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>wishes</groupId>
-    <artifactId>shimeji_virus_version</artifactId>
-    <version>1.0.2-SNAPSHOT</version>
+    <artifactId>shimeji</artifactId>
+    <version>1.0.3-beta1</version>
     <packaging>jar</packaging>
 
 

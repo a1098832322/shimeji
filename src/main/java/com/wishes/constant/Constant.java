@@ -13,7 +13,7 @@ public class Constant {
     /**
      * 当前版本号
      */
-    public static final String CURRENT_VERSION = "1.0.3 - beta 01";
+    public static final String CURRENT_VERSION = "1.0.3-beta1";
 
     /**
      * 更新指示JSON文件下载地址
