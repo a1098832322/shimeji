@@ -83,14 +83,14 @@ public class DownloadDialog extends JDialog {
                 UpdateChecker.Version current = UpdateChecker.getCurrentVersionInfo();
                 versionInfo.setText("已更新到最新版： " + current.getVersion());
                 message.setText("<html><body>&copy;&nbsp;Wishes丶&nbsp;<br>" +
-                        "blog:&nbsp;<a href=''>CSDN地址</a>" +
+                        "项目地址：&nbsp;<a href=''>Shimeji Project</a>" +
                         "</body></html>");
                 //点击跳转
                 message.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mouseClicked(MouseEvent e) {
                         try {
-                            Runtime.getRuntime().exec("cmd.exe /c start " + "https://blog.csdn.net/acevd");
+                            Runtime.getRuntime().exec("cmd.exe /c start " + "https://github.com/a1098832322/shimeji");
                         } catch (Exception ex) {
                             ex.printStackTrace();
                         }

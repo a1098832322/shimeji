@@ -1,6 +1,6 @@
-# shimeji
+# Shimeji
 基于Shimeji ee项目构建的一个私人魔改桌宠小项目<br>
-@author &nbsp;&nbsp;Wishes<br>&nbsp;&nbsp;1098832322
+<b>@author: &nbsp;&nbsp;</b>Wishes<br>&nbsp;&nbsp;
 
 <h2>运行及打包方法</h2>
 <b><li>Run:</li></b>
@@ -73,7 +73,7 @@
 <b>技术讨论：&nbsp;</b>Q~&nbsp;&nbsp;1098832322
 <br><br>
 <br>
-<b>捐赠</b>
+<h2>请吃辣条</h2>
 <li>微信</li>
 <img src="http://wishes-blog.cn/update/files/wx.jpg" alt="微信"/>
 <br>
