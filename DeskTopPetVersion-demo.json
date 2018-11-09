@@ -1,0 +1,20 @@
+/*
+ * 这里给出升级文件demo，可以使用测试类中的generetor生成自定义的提示更新文件
+*/
+{
+  "message": "优化程序更新规则",
+  "nodeList": [
+    {
+      "deployPath": "\\",
+      "downLoadURL": "http://wishes-blog.cn/update/files/点我运行.cmd",
+      "name": "点我运行.cmd"
+    },
+    {
+      "deployPath": "\\download\\",
+      "downLoadURL": "http://wishes-blog.cn/update/files/请先读我.txt",
+      "name": "请先读我.txt"
+    }
+  ],
+  "url": "http://wishes-blog.cn/update/files/shimeji.jar",
+  "version": "1.0.2 - beta 01"
+}

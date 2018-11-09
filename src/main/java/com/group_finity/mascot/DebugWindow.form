@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<Form version="1.3" maxVersion="1.8" type="org.netbeans.modules.form.forminfo.JFrameFormInfo">
+  <Properties>
+    <Property name="defaultCloseOperation" type="int" value="2"/>
+  </Properties>
+  <SyntheticProperties>
+    <SyntheticProperty name="formSizePolicy" type="int" value="1"/>
+    <SyntheticProperty name="generateCenter" type="boolean" value="false"/>
+  </SyntheticProperties>
+  <AuxValues>
+    <AuxValue name="FormSettings_autoResourcing" type="java.lang.Integer" value="0"/>
+    <AuxValue name="FormSettings_autoSetComponentName" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_generateFQN" type="java.lang.Boolean" value="true"/>
+    <AuxValue name="FormSettings_generateMnemonicsCode" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_i18nAutoMode" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_layoutCodeTarget" type="java.lang.Integer" value="1"/>
+    <AuxValue name="FormSettings_listenerGenerationStyle" type="java.lang.Integer" value="0"/>
+    <AuxValue name="FormSettings_variablesLocal" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_variablesModifier" type="java.lang.Integer" value="2"/>
+  </AuxValues>
+
+  <Layout>
+    <DimensionLayout dim="0">
+      <Group type="103" groupAlignment="0" attributes="0">
+          <Group type="102" attributes="0">
+              <EmptySpace max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" attributes="0">
+                      <Component id="lblBehaviour" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="45" max="-2" attributes="0"/>
+                      <Component id="lblBehaviourValue" pref="130" max="32767" attributes="0"/>
+                  </Group>
+                  <Group type="102" alignment="0" attributes="0">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="lblShimejiX" min="-2" max="-2" attributes="0"/>
+                          <Component id="lblShimejiY" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="lblWindowX" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="lblWindowY" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="lblWindowWidth" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="lblWindowHeight" alignment="0" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace min="-2" pref="42" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="lblShimejiYValue" min="-2" max="-2" attributes="0"/>
+                          <Component id="lblShimejiXValue" min="-2" max="-2" attributes="0"/>
+                          <Component id="lblWindowXValue" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="lblWindowYValue" min="-2" max="-2" attributes="0"/>
+                          <Component id="lblWindowWidthValue" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="lblWindowHeightValue" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                  </Group>
+              </Group>
+              <EmptySpace max="-2" attributes="0"/>
+          </Group>
+      </Group>
+    </DimensionLayout>
+    <DimensionLayout dim="1">
+      <Group type="103" groupAlignment="0" attributes="0">
+          <Group type="102" alignment="0" attributes="0">
+              <EmptySpace max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="lblBehaviour" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="lblBehaviourValue" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="lblShimejiX" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="lblShimejiXValue" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="lblShimejiYValue" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="lblShimejiY" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="lblWindowX" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="lblWindowXValue" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="lblWindowY" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="lblWindowYValue" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="lblWindowWidth" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="lblWindowWidthValue" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="lblWindowHeight" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="lblWindowHeightValue" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace max="32767" attributes="0"/>
+          </Group>
+      </Group>
+    </DimensionLayout>
+  </Layout>
+  <SubComponents>
+    <Component class="javax.swing.JLabel" name="lblShimejiX">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Shimeji X"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblShimejiXValue">
+      <Properties>
+        <Property name="horizontalAlignment" type="int" value="2"/>
+        <Property name="text" type="java.lang.String" value="jLabel2"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblShimejiYValue">
+      <Properties>
+        <Property name="horizontalAlignment" type="int" value="2"/>
+        <Property name="text" type="java.lang.String" value="jLabel3"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblShimejiY">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Shimeji Y"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblWindowX">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Window X"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblWindowY">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Window Y"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblWindowWidth">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Window W"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblWindowHeight">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Window H"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblWindowXValue">
+      <Properties>
+        <Property name="horizontalAlignment" type="int" value="2"/>
+        <Property name="text" type="java.lang.String" value="jLabel9"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblWindowYValue">
+      <Properties>
+        <Property name="horizontalAlignment" type="int" value="2"/>
+        <Property name="text" type="java.lang.String" value="jLabel10"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblWindowWidthValue">
+      <Properties>
+        <Property name="horizontalAlignment" type="int" value="2"/>
+        <Property name="text" type="java.lang.String" value="jLabel11"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblWindowHeightValue">
+      <Properties>
+        <Property name="horizontalAlignment" type="int" value="2"/>
+        <Property name="text" type="java.lang.String" value="jLabel12"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblBehaviour">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Behaviour"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="lblBehaviourValue">
+      <Properties>
+        <Property name="horizontalAlignment" type="int" value="2"/>
+        <Property name="text" type="java.lang.String" value="jLabel14"/>
+      </Properties>
+    </Component>
+  </SubComponents>
+</Form>
