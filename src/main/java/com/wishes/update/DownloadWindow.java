@@ -20,6 +20,9 @@ public class DownloadWindow extends JFrame {
         //显示控件
         this.warnText.setVisible(true);
         this.btnOK.setVisible(true);
+
+        //显示下载完成
+        this.setTitle("下载完成");
     }
 
 
