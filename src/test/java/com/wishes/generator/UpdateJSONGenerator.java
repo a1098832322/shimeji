@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.wishes.constant.Constant;
 import com.wishes.update.DataAnalysis;
 import com.wishes.update.Node;
+import lombok.Getter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,6 +23,7 @@ import java.util.List;
 public class UpdateJSONGenerator {
     private DataAnalysis data;
 
+
     /**
      * json
      */
@@ -32,6 +34,9 @@ public class UpdateJSONGenerator {
      */
     private final String savePath = System.getProperty("user.dir") + "/DeskTopPetVersion.json";
 
+    /**
+     * 编辑更新根节点数据
+     */
     @Before
     public void before() {
         data = new DataAnalysis();
@@ -39,8 +44,12 @@ public class UpdateJSONGenerator {
         data.setMessage("修复更新进度条窗口显示错乱的BUG\n\n注：本次更新会将所有文件下载到download文件夹中，" +
                 "待程序下载完毕后将download文件夹中所有文件直接复制到程序根目录下覆盖即可！");
         data.setUrl("http://wishes-blog.cn/update/files/shimeji.jar");
+        data.setUpdateType(Constant.UPDATE_TYPE.BOTH.getType());
     }
 
+    /**
+     * 编辑更新子节点数据
+     */
     @Test
     public void test() {
         //更新cmd启动脚本
@@ -67,6 +76,9 @@ public class UpdateJSONGenerator {
         System.out.println(json);
     }
 
+    /**
+     * 保存JSON文件
+     */
     @After
     public void after() {
         try {

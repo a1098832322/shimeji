@@ -25,6 +25,14 @@ public class DataAnalysis {
     private String url;
 
     /**
+     * 更新模式
+     * children:仅资源文件
+     * main:仅主程序
+     * both:全部都有
+     */
+    private String updateType;
+
+    /**
      * 需要更新的子节点
      */
     private List<Node> nodeList;
