@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * @Auther:郑龙
+ * @Author:郑龙
  * @Date:2018-11-06 14:04
  * @Description:更新升级检测
  */

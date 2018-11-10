@@ -3,7 +3,7 @@ package com.wishes.update;
 import lombok.Data;
 
 /**
- * @Auther:郑龙
+ * @Author:郑龙
  * @Date:2018-11-09 10:08
  * @Description:更新时子文件节点
  */

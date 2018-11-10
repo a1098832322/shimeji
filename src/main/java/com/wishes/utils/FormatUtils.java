@@ -1,7 +1,7 @@
 package com.wishes.utils;
 
 /**
- * @Auther:郑龙
+ * @Author:郑龙
  * @Date:2018-10-10 17:54
  * @Description:
  */

@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * @Auther:郑龙
+ * @Author:郑龙
  * @Date:2018-11-09 10:23
  * @Description:用于生成更新文件json
  */

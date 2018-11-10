@@ -1,16 +1,18 @@
 package com.wishes.fix;
 
 
-import com.group_finity.mascot.Main;
 import com.wishes.constant.Constant;
 import lombok.Data;
 import org.apache.log4j.Logger;
 
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 
 /**
- * @Auther:郑龙
+ * @Author:郑龙
  * @Date:2018-10-10 15:07
  * @Description:将源代码从ant移植到maven部署时需要做许多修改，这个类提供多种修改以及精简工具
  */

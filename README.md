@@ -1,6 +1,7 @@
 # Shimeji
-基于Shimeji ee项目构建的一个私人魔改桌宠小项目<br>
-<b>@author: &nbsp;&nbsp;</b>Wishes<br>&nbsp;&nbsp;
+基于Shimeji ee项目构建的一个个人桌宠小项目<br>
+<a href="http://kilkakon.com/shimeji/">Shimeji ee官方网站</a><br><br>
+<b>修改及二次开发:&nbsp;&nbsp;  </b>by &nbsp;Wishes<br>&nbsp;&nbsp;
 
 <h2>运行及打包方法</h2>
 <b><li>Run:</li></b>
@@ -13,6 +14,10 @@
   <li>mvn clean install</li>
 </ol>
 
+<b>* 注意：需要先指定Constant中的isDevEnvironment值，true为开发环境，方便在IDE下调试，当编译打包时需要先改为false</b>
+
+<br>
+<br>
 <b><li>仅运行项目</li></b>
 <ol>
   <li>下载项目zip压缩包</li>
@@ -20,7 +25,7 @@
   <li>打开Project Test文件夹，双击运行shimeji.jar或双击运行 “ 点我运行.cmd ” 即可成功运行项目</li>
 </ol>
 
-<b>* 注意：需要先指定Constant中的isDevEnvironment值，true为开发环境，方便在IDE下调试，当编译打包时需要先改为false</b>
+
 <br>
 <br>
 

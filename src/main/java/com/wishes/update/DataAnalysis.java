@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 /**
- * @Auther:郑龙
+ * @Author:郑龙
  * @Date:2018-11-08 11:55
  * @Description:针对下载指示文件进行解析并下载文件
  */

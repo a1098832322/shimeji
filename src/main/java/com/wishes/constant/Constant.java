@@ -1,7 +1,7 @@
 package com.wishes.constant;
 
 /**
- * @Auther:郑龙
+ * @Author:郑龙
  * @Date:2018-11-07 16:45
  * @Description:定义一些全局常量
  */

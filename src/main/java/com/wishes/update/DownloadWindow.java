@@ -5,7 +5,7 @@ import lombok.Getter;
 import javax.swing.*;
 
 /**
- * @Auther:郑龙
+ * @Author:郑龙
  * @Date:2018-11-06 15:33
  * @Description:下载窗口
  */
