@@ -75,7 +75,7 @@ public class UpdateChecker {
      * @param checkType 来源
      * @return Version
      */
-    public static Version checkUpdate(String checkType) throws IOException {
+    public static Version checkUpdate(CHECK_UPDATE_TYPE checkType) throws IOException {
         //网络请求
         OkHttpClient mClient = new OkHttpClient();
         Request request = new Request.Builder().url(UPDATE_URL).get().build();

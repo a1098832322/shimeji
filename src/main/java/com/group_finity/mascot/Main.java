@@ -85,7 +85,9 @@ public class Main {
             //检测更新
             new Thread(() -> {
                 try {
-                    if (UpdateChecker.checkUpdate() != null) {
+                    if (UpdateChecker.checkUpdate(
+                            UpdateChecker.CHECK_UPDATE_TYPE
+                                    .MANUAL) != null) {
                         //显示更新提示框
                         new DownloadDialog();
                     }

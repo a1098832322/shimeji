@@ -67,7 +67,7 @@ public class DownloadDialog extends JDialog {
      */
     public void queryUpdateInfo() {
         try {
-            UpdateChecker.Version v = UpdateChecker.checkUpdate();
+            UpdateChecker.Version v = UpdateChecker.checkUpdate(UpdateChecker.CHECK_UPDATE_TYPE.AUTO);
             if (v != null) {
                 //恢复按钮功能
                 buttonOK.setEnabled(true);
