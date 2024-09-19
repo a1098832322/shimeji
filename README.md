@@ -1,4 +1,6 @@
-# Shimeji![](https://img.shields.io/badge/Version-v1.0.3beta2-green.svg)
+# Shimeji  
+![](https://img.shields.io/badge/Version-v1.0.3beta2-green.svg)  
+
 基于Shimeji ee项目构建的一个个人桌宠小项目  
 
 [Shimeji ee官方网站](http://kilkakon.com/shimeji/)
