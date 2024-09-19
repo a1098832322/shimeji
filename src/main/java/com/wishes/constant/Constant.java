@@ -19,7 +19,7 @@ public class Constant {
     /**
      * 当前版本号
      */
-    public static final String CURRENT_VERSION = "1.0.3-beta1";
+    public static final String CURRENT_VERSION = "1.0.3-beta2";
 
     /**
      * 更新类型

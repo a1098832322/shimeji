@@ -5,10 +5,8 @@ import com.wishes.constant.Constant;
 import lombok.Data;
 import org.apache.log4j.Logger;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 /**
@@ -70,7 +68,7 @@ public class OriginEngineFix {
         FileInputStream input;
         try {
             input = (FileInputStream) OriginEngineFix.getInstance().propertiesLoder(Constant.isDevEnvironment, "settings.properties");
-            properties.load(input);
+            properties.load(new InputStreamReader(input, StandardCharsets.UTF_8));
         } catch (FileNotFoundException e) {
             logger.error("找不到配置文件!", e);
         } catch (IOException e) {
