@@ -91,9 +91,14 @@ public class Main {
                         //显示更新提示框
                         new DownloadDialog();
                     }
+                } catch (java.net.SocketTimeoutException e) {
+                    log.log(Level.WARNING, "检测更新时连接超时，已跳过更新检查", e);
+                } catch (java.net.ConnectException e) {
+                    log.log(Level.WARNING, "检测更新时无法连接到服务器，已跳过更新检查", e);
                 } catch (IOException e) {
-                    e.printStackTrace();
-                    log.log(Level.SEVERE, "检测更新时请求数据失败！", e);
+                    log.log(Level.WARNING, "检测更新时发生网络错误，已跳过更新检查: " + e.getMessage(), e);
+                } catch (Exception e) {
+                    log.log(Level.SEVERE, "检测更新时发生未知错误！", e);
                 }
             }).start();
 

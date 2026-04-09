@@ -77,10 +77,27 @@ public class UpdateChecker {
      */
     public static Version checkUpdate(CHECK_UPDATE_TYPE checkType) throws IOException {
         //网络请求
-        OkHttpClient mClient = new OkHttpClient();
+        OkHttpClient mClient = new OkHttpClient.Builder()
+                .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .build();
         Request request = new Request.Builder().url(UPDATE_URL).get().build();
-        Response response = mClient.newCall(request).execute();
-        if (response.isSuccessful()) {
+        Response response = null;
+        try {
+            response = mClient.newCall(request).execute();
+        } catch (java.net.SocketTimeoutException e) {
+            logger.warn("检测更新时连接超时，跳过本次更新检查");
+            return null;
+        } catch (java.net.ConnectException e) {
+            logger.warn("检测更新时无法连接到服务器，跳过本次更新检查");
+            return null;
+        } catch (IOException e) {
+            logger.warn("检测更新时发生网络错误，跳过本次更新检查: " + e.getMessage());
+            return null;
+        }
+        
+        if (response != null && response.isSuccessful()) {
             String json = response.body().string();
 
             //解析json
@@ -145,7 +162,11 @@ public class UpdateChecker {
             if (mData.getNodeList() != null && mData.getNodeList().size() > 0
                     && !Constant.UPDATE_TYPE.MAIN.getType().equals(mData.getUpdateType())) {
                 for (Node node : mData.getNodeList()) {
-                    OkHttpClient mNodeClient = new OkHttpClient();
+                    OkHttpClient mNodeClient = new OkHttpClient.Builder()
+                            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                            .build();
                     Request nodeRequest = new Request.Builder().url(node.getDownLoadURL()).get().build();
                     mNodeClient.newCall(nodeRequest).enqueue(new Callback() {
                         @Override
@@ -212,7 +233,11 @@ public class UpdateChecker {
                 //主程序无更新
             } else {
                 //有更新时下载主程序
-                OkHttpClient mClient = new OkHttpClient();
+                OkHttpClient mClient = new OkHttpClient.Builder()
+                        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                        .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                        .build();
                 Request request = new Request.Builder().url(mData.getUrl()).get().build();
                 mClient.newCall(request).enqueue(new Callback() {
                     @Override
