@@ -56,8 +56,13 @@ public class Wall implements Border {
 
 	@Override
 	public boolean isOn(final Point location) {
-		return getArea().isVisible() && (getX() == location.x) && (getTop() <= location.y)
-				&& (location.y <= getBottom());
+		// 高 DPI 环境下需要使用容差比较，避免舍入误差导致碰撞检测失败
+		// 例如：在 200% 缩放下，坐标可能出现 0.5 的偏差
+		final int TOLERANCE = 2; // 允许 2 像素的误差
+		return getArea().isVisible() && 
+		       Math.abs(getX() - location.x) <= TOLERANCE && 
+		       (getTop() <= location.y) &&
+		       (location.y <= getBottom());
 	}
 
 	public Point move(final Point location) {

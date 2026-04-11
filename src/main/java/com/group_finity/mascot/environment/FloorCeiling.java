@@ -56,8 +56,13 @@ public class FloorCeiling implements Border {
 
 	@Override
 	public boolean isOn(final Point location) {
-		return getArea().isVisible() && (getY() == location.y) && (getLeft() <= location.x)
-				&& (location.x <= getRight());
+		// 高 DPI 环境下需要使用容差比较，避免舍入误差导致碰撞检测失败
+		// 例如：在 200% 缩放下，坐标可能出现 0.5 的偏差
+		final int TOLERANCE = 2; // 允许 2 像素的误差
+		return getArea().isVisible() && 
+		       Math.abs(getY() - location.y) <= TOLERANCE && 
+		       (getLeft() <= location.x) &&
+		       (location.x <= getRight());
 	}
 
 

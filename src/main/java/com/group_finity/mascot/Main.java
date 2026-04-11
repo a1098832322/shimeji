@@ -74,6 +74,11 @@ public class Main {
     }
 
     public static void main(final String[] args) {
+        // 启用高 DPI 支持（Java 9+）
+        // 必须在创建任何 Swing 组件之前设置
+        System.setProperty("sun.java2d.uiScale.enabled", "true");
+        System.setProperty("sun.java2d.dpiaware", "true");
+        
         try {
             //检测更新
             new Thread(() -> {
@@ -795,8 +800,9 @@ public class Main {
         // Create one mascot
         final Mascot mascot = new Mascot(imageSet);
 
-        // Create it outside the bounds of the screen
-        mascot.setAnchor(new Point(-1000, -1000));
+        // 设置初始位置：X=10, Y=-1000（屏幕外顶部）
+        // Shimeji 会从屏幕顶部掉落下来
+        mascot.setAnchor(new Point(10, -1000));
 
         // Randomize the initial orientation
         mascot.setLookRight(Math.random() < 0.5);
@@ -811,6 +817,11 @@ public class Main {
             }
             mascot.setBehavior(config.buildNextBehavior(null, mascot));
             this.getManager().add(mascot);
+            
+            // 仅在设置了 -Ddebugwindow=true 时自动打开 DebugWindow
+            if (com.wishes.constant.Constant.autoOpenDebugWindow) {
+                mascot.openDebugWindow();
+            }
         } catch (final BehaviorInstantiationException e) {
             log.error("Failed to initialize the first action", e);
             Main.showError(languageBundle.getProperty("FailedInitialiseFirstActionErrorMessage") + "\n" + e.getMessage() + "\n" + languageBundle.getProperty("SeeLogForDetails"));

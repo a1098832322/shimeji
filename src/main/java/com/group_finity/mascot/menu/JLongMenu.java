@@ -1,6 +1,7 @@
 package com.group_finity.mascot.menu;
 
 import com.group_finity.mascot.Main;
+import com.group_finity.mascot.util.DPIScaler;
 import javax.swing.*;
 import java.awt.*;
  
@@ -24,7 +25,8 @@ public class JLongMenu extends JMenu {
         super(label);
         JMenuItem getHeightMenu = new JMenuItem("Temporary");
         int menuItemHeight = getHeightMenu.getPreferredSize().height;
-        int screenHeight = Toolkit.getDefaultToolkit().getScreenSize().height;
+        // 使用逻辑像素（已考虑 DPI 缩放）
+        int screenHeight = (int) DPIScaler.getLogicalScreenBounds().getHeight();
  
         maxItems = screenHeight / menuItemHeight - 2;
         // leave one for the "more" menu and one for the windows task bar.
@@ -70,7 +72,8 @@ public class JLongMenu extends JMenu {
         int y = 0;
         JPopupMenu pm = getPopupMenu();
         // Figure out the sizes needed to caclulate the menu position
-        Dimension screenSize =Toolkit.getDefaultToolkit().getScreenSize();
+        // 使用逻辑像素（已考虑 DPI 缩放）
+        Dimension screenSize = DPIScaler.getLogicalScreenBounds().getSize();
         Dimension s = getSize();
         Dimension pmSize = pm.getSize();
         // For the first time the menu is popped up,

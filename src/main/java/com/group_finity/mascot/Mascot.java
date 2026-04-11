@@ -492,6 +492,10 @@ public class Mascot
                 debugWindow.setEnvironmentY( workArea.getTop( ) );
                 debugWindow.setEnvironmentWidth( workArea.getWidth( ) );
                 debugWindow.setEnvironmentHeight( workArea.getHeight( ) );
+                
+                // 设置 DPI 缩放信息
+                double scaleFactor = com.group_finity.mascot.util.DPIScaler.getSystemScaleFactor();
+                debugWindow.setDPIScaleFactor(scaleFactor);
             }
         }
     }
@@ -560,6 +564,18 @@ public class Mascot
         {
             getManager( ).remove( Mascot.this );
         }
+    }
+    
+    /**
+     * 打开 DebugWindow（用于程序启动时默认显示）
+     */
+    public void openDebugWindow()
+    {
+        if( debugWindow == null )
+        {
+            debugWindow = new DebugWindow( );
+        }
+        debugWindow.setVisible( true );
     }
         
     private void refreshCursor( Point position )

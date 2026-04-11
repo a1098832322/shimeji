@@ -193,6 +193,10 @@ class WindowsEnvironment extends Environment
 
     private static Rectangle getIERect( Pointer ie )
     {
+        if (ie == null) {
+            return null;
+        }
+        
         final RECT out = new RECT();
         User32.INSTANCE.GetWindowRect( ie, out );
         final RECT in = new RECT();
@@ -203,7 +207,17 @@ class WindowsEnvironment extends Environment
             in.right = out.right - out.left;
             in.bottom = out.bottom - out.top;
         }
-        return new Rectangle( out.left + in.left, out.top + in.top, in.Width( ), in.Height( ) );
+        
+        // 获取 DPI 缩放因子
+        double scaleFactor = com.group_finity.mascot.util.DPIScaler.getSystemScaleFactor();
+        
+        // 将物理像素转换为逻辑像素
+        int left = (int) Math.round((out.left + in.left) / scaleFactor);
+        int top = (int) Math.round((out.top + in.top) / scaleFactor);
+        int width = (int) Math.round(in.Width() / scaleFactor);
+        int height = (int) Math.round(in.Height() / scaleFactor);
+        
+        return new Rectangle(left, top, width, height);
     }
 
     private static int getWindowRgnBox( final Pointer window, final RECT rect )
@@ -262,13 +276,27 @@ class WindowsEnvironment extends Environment
                 IEResult result = isViableIE( ie );
                 if( result == IEResult.IE_OUT_OF_BOUNDS )
                 {
-                    final RECT workArea = new RECT( );
-                    User32.INSTANCE.SystemParametersInfoW( User32.SPI_GETWORKAREA, 0, workArea, 0 );
+                    // 使用已经考虑 DPI 缩放的方法
+                    Rectangle workAreaRect = getWorkAreaRect();
                     final RECT rect = new RECT( );
                     User32.INSTANCE.GetWindowRect( ie, rect );
                     
-                    rect.OffsetRect( workArea.left + offset - rect.left, workArea.top + offset - rect.top );
-                    User32.INSTANCE.MoveWindow( ie, rect.left, rect.top, rect.Width( ), rect.Height( ), 1 );
+                    // 获取 DPI 缩放因子
+                    double scaleFactor = com.group_finity.mascot.util.DPIScaler.getSystemScaleFactor();
+                    
+                    // 将物理像素转换为逻辑像素进行计算
+                    int rectLeft = (int) Math.round(rect.left / scaleFactor);
+                    int rectTop = (int) Math.round(rect.top / scaleFactor);
+                    
+                    // 计算新位置（使用逻辑像素）
+                    int newLeft = workAreaRect.x + offset;
+                    int newTop = workAreaRect.y + offset;
+                    
+                    // 移动窗口时需要转换回物理像素
+                    User32.INSTANCE.MoveWindow( ie, 
+                        (int) Math.round(newLeft * scaleFactor), 
+                        (int) Math.round(newTop * scaleFactor), 
+                        rect.Width(), rect.Height(), 1 );
                     User32.INSTANCE.BringWindowToTop( ie );
                     
                     offset += 25;
@@ -335,7 +363,17 @@ class WindowsEnvironment extends Environment
     {
         final RECT rect = new RECT();
         User32.INSTANCE.SystemParametersInfoW( User32.SPI_GETWORKAREA, 0, rect, 0 );
-        return new Rectangle( rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top );
+        
+        // 获取 DPI 缩放因子
+        double scaleFactor = com.group_finity.mascot.util.DPIScaler.getSystemScaleFactor();
+        
+        // 将物理像素转换为逻辑像素
+        int left = (int) Math.round(rect.left / scaleFactor);
+        int top = (int) Math.round(rect.top / scaleFactor);
+        int right = (int) Math.round(rect.right / scaleFactor);
+        int bottom = (int) Math.round(rect.bottom / scaleFactor);
+        
+        return new Rectangle(left, top, right - left, bottom - top);
     }
 
     @Override

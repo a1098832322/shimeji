@@ -17,6 +17,12 @@ public class Constant {
      * 在IDE中运行是，请添加VM启动参数： -Ddev=true
      */
     public static final boolean isDevEnvironment = Boolean.parseBoolean(System.getProperty("dev", "false"));
+    
+    /**
+     * 是否自动打开 DebugWindow<br>
+     * 在IDE中运行时，请添加VM启动参数： -Ddebugwindow=true
+     */
+    public static final boolean autoOpenDebugWindow = Boolean.parseBoolean(System.getProperty("debugwindow", "false"));
     /**
      * 当前版本号
      */

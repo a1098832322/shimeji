@@ -17,7 +17,7 @@ import com.sun.jna.Pointer;
 
 /**
  * The image window with alpha.
- * {@link #setImage(WindowsNativeImage)} set in {@link WindowsNativeImage} can be displayed on the desktop.
+ * {@link #setImage(NativeImage)} set in {@link NativeImage} can be displayed on the desktop.
  * 
  * {@link #setAlpha(int)} may be specified when the concentration of view.
  *
@@ -71,7 +71,7 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 			
 			User32.INSTANCE.ReleaseDC(hWnd, clientDC);
 
-			// Destination Area
+			// Destination Area - 获取窗口实际的物理像素位置和大小
 			final RECT windowRect = new RECT();
 			User32.INSTANCE.GetWindowRect(hWnd, windowRect);
 			

@@ -9,6 +9,7 @@
 - ✅ **支持 macOS 26** - 完美兼容最新 macOS 系统
 - 🎨 **统一日志框架** - 迁移至 Logback，提供更稳定的日志输出
 - 📂 **日志分级管理** - 日志按级别分别输出到 `logs/info.log`、`logs/warn.log`、`logs/error.log`
+- 🔍 **可选调试窗口** - 通过 `-Ddebugwindow=true` JVM 参数控制是否自动打开 DebugWindow，方便开发和调试
 
 ### 🔧 优化改进
 - 🔒 **安全升级** - 修复所有已知 CVE 漏洞（Log4j、Logback、OkHttp 等）
@@ -18,17 +19,21 @@
 - 📜 **许可证变更** - 从 Apache License 2.0 更改为 GNU GPL v3.0
 - 🎨 **UI 框架简化** - 移除 BeautyEye 依赖，统一使用系统默认 LookAndFeel，提升兼容性和稳定性
 - 📝 **日志优化** - 抑制控制台垃圾日志输出，降低根日志级别为 WARN，项目代码保持 INFO 级别
+- 🖥️ **DPI 缩放支持** - 新增 DPIScaler 工具类，统一所有屏幕尺寸获取方式，确保 environment.getWorkArea() 返回逻辑像素（如 200% 缩放下 1920→960），桌宠在所有分辨率下正确定位和显示
+- 📊 **DebugWindow 增强** - 添加 DPI 缩放比例显示，同时显示逻辑像素和物理像素（如 "960 (物理: 1920)"），明确标注环境数据为逻辑像素，方便调试高 DPI 问题
 
 ### 🐛 Bug 修复
 - 🔧 修复日志占位符格式问题（`{0}` → `{}`）
 - 🔧 修复日志方法名解析错误（`%PARSER_ERROR[method]`）
 - 🔧 优化调试日志级别，减少 INFO 日志冗余
-- 🔧 修复 JNA Structure 字段顺序缺失导致的 Windows 平台崩溃问题（BITMAPINFOHEADER、BITMAP、RECT、POINT、SIZE、BLENDFUNCTION、MONITORINFO）
+- 🔧 修复 JNA Structure 字段顺序缺失导致的 Windows 平台崩溃问题
 - 🔧 修复 ImageSetChooser 在 img 目录不存在或无法访问时的空指针异常，增加友好的错误提示
 - 🔧 修复 Windows 平台桌宠窗口无法显示的问题，增加窗口初始化代码和空值检查
-- 🔧 **修复皮肤资源加载失败问题** - 解决选择新皮肤后报错"无法加载图像"的问题，支持开发环境和生产环境的动态路径识别
+- 🔧 **修复皮肤资源加载失败问题** - 解决选择新皮肤后报错“无法加载图像”的问题，支持开发环境和生产环境的动态路径识别
 - 🔧 **修复配置加载空指针异常** - 增加配置 null 检查，避免配置加载失败时的崩溃
-
+- 🔧 **修复高 DPI 缩放下碰撞检测失效的问题** - 修改 FloorCeiling 和 Wall 的 isOn() 方法，使用容差比较（±2像素）替代精确匹配，解决 200%+ 缩放下桌宠不停掉落、DebugWindow 显示 NA 的问题
+- 🔧 **修复 WindowsEnvironment DPI 缩放问题** - 修改 getWorkAreaRect() 和 getIERect() 方法，将 Windows API 返回的物理像素转换为逻辑像素，确保工作区域和活动窗口坐标与 Java Swing 坐标系统一致
+- 🔧 **修复高 DPI 下动画不生效的问题** - 在 Main 方法中启用 Java 2D 高 DPI 支持（sun.java2d.uiScale.enabled），确保动画帧正确推进和图片更新
 ---
 
 ## 📌 1.0.3 - b1

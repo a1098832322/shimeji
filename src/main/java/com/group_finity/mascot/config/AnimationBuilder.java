@@ -92,49 +92,37 @@ public class AnimationBuilder
         String imageAttr = frameNode.getAttribute( schema.getString( "Image" ) );
         String imageRightAttr = frameNode.getAttribute( schema.getString( "ImageRight" ) );
         
-        // imageSet 可能是完整路径（如 D:\workspace\shimeji\src\main\resources\img\Miku）
-        // 也可能是相对路径（如 Miku），需要提取目录名
-        String imageSetName = imageSet;
-        if( imageSet.contains( "\\" ) || ( imageSet.contains( "/" ) && !imageSet.startsWith( "." ) ) )
-        {
-            // 这是完整路径，提取最后的目录名
-            String[] parts = imageSet.replace( "\\", "/" ).split( "/" );
-            imageSetName = parts[ parts.length - 1 ];
-        }
-        
-        // 去除 Image 属性开头的 /
-        if( imageAttr != null && imageAttr.startsWith( "/" ) )
-        {
-            imageAttr = imageAttr.substring( 1 );
-        }
-        if( imageRightAttr != null && imageRightAttr.startsWith( "/" ) )
-        {
-            imageRightAttr = imageRightAttr.substring( 1 );
-        }
-        
+        // imageSet 可能已经是完整路径，也可能是相对路径
         Path imageText = null;
         Path imageRightText = null;
         
         if( imageAttr != null )
         {
-            // 根据环境构建正确的图片路径
-            Path basePath = Constant.isDevEnvironment 
-                ? Paths.get( ".", "src", "main", "resources", "img" )
-                : Paths.get( ".", "img" );
-            
-            // 构建完整路径：img/Miku/shime1.png
-            String fullPath = imageSetName + "/" + imageAttr;
-            imageText = basePath.resolve( fullPath );
+            String fullPath = imageSet + imageAttr;
+            File imageFile = new File( fullPath );
+            if( imageFile.exists( ) )
+            {
+                imageText = imageFile.toPath( );
+            }
+            else
+            {
+                // 尝试在 img 目录下查找
+                imageText = Paths.get( fullPath );
+            }
         }
         
         if( imageRightAttr != null )
         {
-            Path basePath = Constant.isDevEnvironment 
-                ? Paths.get( ".", "src", "main", "resources", "img" )
-                : Paths.get( ".", "img" );
-            
-            String fullPath = imageSetName + "/" + imageRightAttr;
-            imageRightText = basePath.resolve( fullPath );
+            String fullPath = imageSet + imageRightAttr;
+            File imageFile = new File( fullPath );
+            if( imageFile.exists( ) )
+            {
+                imageRightText = imageFile.toPath( );
+            }
+            else
+            {
+                imageRightText = Paths.get( fullPath );
+            }
         }
         final String anchorText = frameNode.getAttribute( schema.getString( "ImageAnchor" ) ) != null ? frameNode.getAttribute( schema.getString( "ImageAnchor" ) ) : null;
         final String moveText = frameNode.getAttribute( schema.getString( "Velocity" ) );

@@ -10,6 +10,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.group_finity.mascot.util.DPIScaler;
+
 /**
  * Original Author: Yuki Yamada of Group Finity (http://www.group-finity.com/Shimeji/)
  * Currently developed by Shimeji-ee Group.
@@ -30,7 +32,7 @@ public abstract class Environment
     
     public abstract void dispose( );
 
-    protected static Rectangle screenRect = new Rectangle( new Point(0, 0), Toolkit.getDefaultToolkit( ).getScreenSize( ) );
+    protected static Rectangle screenRect = new Rectangle( new Point(0, 0), DPIScaler.getLogicalScreenBounds().getSize() );
 
     protected static Map<String, Rectangle> screenRects = new HashMap<String, Rectangle>( );
     
@@ -80,7 +82,12 @@ public abstract class Environment
         screenRect = virtualBounds;
     }
 
-    protected static Rectangle getScreenRect( )
+    /**
+     * 获取屏幕矩形（逻辑像素）
+     * Java 的坐标系统使用逻辑像素，已经考虑了 DPI 缩放
+     * 例如：1920x1080 屏幕在 200% 缩放下，返回 960x540
+     */
+    protected static Rectangle getScreenRect()
     {
         return screenRect;
     }

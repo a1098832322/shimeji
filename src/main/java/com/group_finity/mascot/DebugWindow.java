@@ -45,6 +45,8 @@ public class DebugWindow extends javax.swing.JFrame
         lblEnvironmentWidthValue = new javax.swing.JLabel();
         lblActiveIE = new javax.swing.JLabel();
         lblActiveIEValue = new javax.swing.JLabel();
+        lblDPIScale = new javax.swing.JLabel();
+        lblDPIScaleValue = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
@@ -107,6 +109,11 @@ public class DebugWindow extends javax.swing.JFrame
 
         lblActiveIEValue.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
         lblActiveIEValue.setText("N/A");
+        
+        lblDPIScale.setText("DPI Scale");
+        
+        lblDPIScaleValue.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        lblDPIScaleValue.setText("N/A");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -126,7 +133,8 @@ public class DebugWindow extends javax.swing.JFrame
                     .addComponent(lblEnvironmentY)
                     .addComponent(lblEnvironmentWidth)
                     .addComponent(lblEnvironmentHeight)
-                    .addComponent(lblActiveIE))
+                    .addComponent(lblActiveIE)
+                    .addComponent(lblDPIScale))
                 .addGap(42, 42, 42)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(lblBehaviourValue, javax.swing.GroupLayout.DEFAULT_SIZE, 165, Short.MAX_VALUE)
@@ -142,7 +150,8 @@ public class DebugWindow extends javax.swing.JFrame
                             .addComponent(lblWindowWidthValue)
                             .addComponent(lblEnvironmentXValue)
                             .addComponent(lblEnvironmentYValue)
-                            .addComponent(lblActiveIEValue))
+                            .addComponent(lblActiveIEValue)
+                            .addComponent(lblDPIScaleValue))
                         .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
@@ -197,6 +206,10 @@ public class DebugWindow extends javax.swing.JFrame
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(lblEnvironmentHeight)
                     .addComponent(lblEnvironmentHeightValue))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblDPIScale)
+                    .addComponent(lblDPIScaleValue))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -235,12 +248,16 @@ public class DebugWindow extends javax.swing.JFrame
     
     void setWindowWidth( int width )
     {
-        lblWindowWidthValue.setText( String.format( "%d", width ) );
+        // 同时显示逻辑像素和物理像素
+        int physicalWidth = (int) Math.round(width * dpiScaleFactor);
+        lblWindowWidthValue.setText( String.format( "%d (物理: %d)", width, physicalWidth ) );
     }
     
     void setWindowHeight( int height )
     {
-        lblWindowHeightValue.setText( String.format( "%d", height ) );
+        // 同时显示逻辑像素和物理像素
+        int physicalHeight = (int) Math.round(height * dpiScaleFactor);
+        lblWindowHeightValue.setText( String.format( "%d (物理: %d)", height, physicalHeight ) );
     }
     
     void setEnvironmentX( int x )
@@ -255,12 +272,22 @@ public class DebugWindow extends javax.swing.JFrame
     
     void setEnvironmentWidth( int width )
     {
-        lblEnvironmentWidthValue.setText( String.format( "%d", width ) );
+        // 同时显示逻辑像素和物理像素
+        int physicalWidth = (int) Math.round(width * dpiScaleFactor);
+        lblEnvironmentWidthValue.setText( String.format( "%d (物理: %d)", width, physicalWidth ) );
     }
     
     void setEnvironmentHeight( int height )
     {
-        lblEnvironmentHeightValue.setText( String.format( "%d", height ) );
+        // 同时显示逻辑像素和物理像素
+        int physicalHeight = (int) Math.round(height * dpiScaleFactor);
+        lblEnvironmentHeightValue.setText( String.format( "%d (物理: %d)", height, physicalHeight ) );
+    }
+    
+    void setDPIScaleFactor( double scaleFactor )
+    {
+        this.dpiScaleFactor = scaleFactor;
+        lblDPIScaleValue.setText( String.format( "%.0f%% (%.2fx)", scaleFactor * 100, scaleFactor ) );
     }
     
     @Override
@@ -280,6 +307,7 @@ public class DebugWindow extends javax.swing.JFrame
           lblEnvironmentY.setText( Main.getInstance( ).getLanguageBundle( ).getProperty( "EnvironmentY" ) );
           lblEnvironmentWidth.setText( Main.getInstance( ).getLanguageBundle( ).getProperty( "EnvironmentWidth" ) );
           lblEnvironmentHeight.setText( Main.getInstance( ).getLanguageBundle( ).getProperty( "EnvironmentHeight" ) );
+          lblDPIScale.setText( "DPI Scale" );
         }
         super.setVisible( b );
     }
@@ -309,5 +337,10 @@ public class DebugWindow extends javax.swing.JFrame
     private javax.swing.JLabel lblWindowXValue;
     private javax.swing.JLabel lblWindowY;
     private javax.swing.JLabel lblWindowYValue;
+    private javax.swing.JLabel lblDPIScale;
+    private javax.swing.JLabel lblDPIScaleValue;
+    
+    // DPI 缩放因子，用于计算物理像素
+    private double dpiScaleFactor = 1.0;
     // End of variables declaration//GEN-END:variables
 }

@@ -2,7 +2,6 @@ package com.group_finity.mascot.mac;
 
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.awt.Toolkit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.lang.management.ManagementFactory;
@@ -25,6 +24,7 @@ import com.group_finity.mascot.mac.jna.CGSize;
 import com.group_finity.mascot.mac.jna.CFStringRef;
 import com.group_finity.mascot.mac.jna.CFNumberRef;
 import com.group_finity.mascot.mac.jna.CFArrayRef;
+import com.group_finity.mascot.util.DPIScaler;
 
 /**
  * Java では取得が難しい環境情報をAccessibility APIを使用して取得する.
@@ -40,10 +40,15 @@ class MacEnvironment extends Environment {
 	private static Area activeIE = new Area();
   private static Area frontmostWindow = activeIE;
 
-	private static final int screenWidth =
-		(int) Math.round(Toolkit.getDefaultToolkit().getScreenSize().getWidth());
-	private static final int screenHeight =
-		(int) Math.round(Toolkit.getDefaultToolkit().getScreenSize().getHeight());
+	// 使用 DPIScaler 获取正确的屏幕尺寸（逻辑像素）
+	// Java 坐标系统使用逻辑像素，已经考虑了 Retina 显示器的缩放
+	private static int getScreenWidth() {
+		return (int) com.group_finity.mascot.util.DPIScaler.getLogicalScreenBounds().getWidth();
+	}
+	
+	private static int getScreenHeight() {
+		return (int) com.group_finity.mascot.util.DPIScaler.getLogicalScreenBounds().getHeight();
+	}
 
 	private static Carbon carbon = Carbon.INSTANCE;
 
@@ -198,14 +203,6 @@ class MacEnvironment extends Environment {
 
 	private static CFStringRef createCFString(String s) {
 		return carbon.CFStringCreateWithCharacters(null, s.toCharArray(), s.length());
-	}
-
-	private static int getScreenWidth() {
-		return screenWidth;
-	}
-
-	private static int getScreenHeight() {
-		return screenHeight;
 	}
 
 	/**
