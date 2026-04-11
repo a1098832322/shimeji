@@ -1,5 +1,5 @@
 # Shimeji  
-![](https://img.shields.io/badge/Version-v1.0.3beta2-green.svg)  
+![](https://img.shields.io/badge/Version-v1.0.4-green.svg)  
 
 基于Shimeji ee项目构建的一个个人桌宠小项目  
 
@@ -13,7 +13,7 @@
 #### Maven打包
 1. 执行`mvn clean install`进行项目打包。
 
-**注意：需要先指定`Constant`中的`isDevEnvironment`值，`true`为开发环境，方便在IDE下调试，当编译打包时需要先改为`false`。**
+**注意：如需要在IDE中开发/调试程序，请添加VM参数：```-Ddev=true``` **
 
 #### 仅运行查看项目demo
 1. 下载项目zip压缩包。
