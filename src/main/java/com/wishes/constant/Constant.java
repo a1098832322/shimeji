@@ -13,9 +13,10 @@ public class Constant {
      **********************/
 
     /**
-     * 是否为开发环境
+     * 是否为开发环境<br>
+     * 在IDE中运行是，请添加VM启动参数： -Ddev=true
      */
-    public static final boolean isDevEnvironment = true;
+    public static final boolean isDevEnvironment = Boolean.parseBoolean(System.getProperty("dev", "false"));
     /**
      * 当前版本号
      */
