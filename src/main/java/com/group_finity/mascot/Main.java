@@ -802,7 +802,14 @@ public class Main {
         mascot.setLookRight(Math.random() < 0.5);
 
         try {
-            mascot.setBehavior(getConfiguration(imageSet).buildNextBehavior(null, mascot));
+            Configuration config = getConfiguration(imageSet);
+            if (config == null) {
+                log.error("Configuration not found for imageSet: {}", imageSet);
+                Main.showError(languageBundle.getProperty("CouldNotCreateShimejiErrorMessage") + imageSet + ".\n" + languageBundle.getProperty("SeeLogForDetails"));
+                mascot.dispose();
+                return;
+            }
+            mascot.setBehavior(config.buildNextBehavior(null, mascot));
             this.getManager().add(mascot);
         } catch (final BehaviorInstantiationException e) {
             log.error("Failed to initialize the first action", e);

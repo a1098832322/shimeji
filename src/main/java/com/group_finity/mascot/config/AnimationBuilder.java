@@ -1,11 +1,13 @@
 package com.group_finity.mascot.config;
 
 import com.group_finity.mascot.Main;
+import com.wishes.constant.Constant;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.geom.Ellipse2D;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -86,8 +88,54 @@ public class AnimationBuilder
 
     private Pose loadPose( final Entry frameNode ) throws IOException
     {
-        final Path imageText = frameNode.getAttribute( schema.getString( "Image" ) ) != null ? Paths.get( imageSet + frameNode.getAttribute( schema.getString( "Image" ) ) ) : null;
-        final Path imageRightText = frameNode.getAttribute( schema.getString( "ImageRight" ) ) != null ? Paths.get( imageSet + frameNode.getAttribute( schema.getString( "ImageRight" ) ) ) : null;
+        // 处理图片路径
+        String imageAttr = frameNode.getAttribute( schema.getString( "Image" ) );
+        String imageRightAttr = frameNode.getAttribute( schema.getString( "ImageRight" ) );
+        
+        // imageSet 可能是完整路径（如 D:\workspace\shimeji\src\main\resources\img\Miku）
+        // 也可能是相对路径（如 Miku），需要提取目录名
+        String imageSetName = imageSet;
+        if( imageSet.contains( "\\" ) || ( imageSet.contains( "/" ) && !imageSet.startsWith( "." ) ) )
+        {
+            // 这是完整路径，提取最后的目录名
+            String[] parts = imageSet.replace( "\\", "/" ).split( "/" );
+            imageSetName = parts[ parts.length - 1 ];
+        }
+        
+        // 去除 Image 属性开头的 /
+        if( imageAttr != null && imageAttr.startsWith( "/" ) )
+        {
+            imageAttr = imageAttr.substring( 1 );
+        }
+        if( imageRightAttr != null && imageRightAttr.startsWith( "/" ) )
+        {
+            imageRightAttr = imageRightAttr.substring( 1 );
+        }
+        
+        Path imageText = null;
+        Path imageRightText = null;
+        
+        if( imageAttr != null )
+        {
+            // 根据环境构建正确的图片路径
+            Path basePath = Constant.isDevEnvironment 
+                ? Paths.get( ".", "src", "main", "resources", "img" )
+                : Paths.get( ".", "img" );
+            
+            // 构建完整路径：img/Miku/shime1.png
+            String fullPath = imageSetName + "/" + imageAttr;
+            imageText = basePath.resolve( fullPath );
+        }
+        
+        if( imageRightAttr != null )
+        {
+            Path basePath = Constant.isDevEnvironment 
+                ? Paths.get( ".", "src", "main", "resources", "img" )
+                : Paths.get( ".", "img" );
+            
+            String fullPath = imageSetName + "/" + imageRightAttr;
+            imageRightText = basePath.resolve( fullPath );
+        }
         final String anchorText = frameNode.getAttribute( schema.getString( "ImageAnchor" ) ) != null ? frameNode.getAttribute( schema.getString( "ImageAnchor" ) ) : null;
         final String moveText = frameNode.getAttribute( schema.getString( "Velocity" ) );
         final String durationText = frameNode.getAttribute( schema.getString( "Duration" ) );

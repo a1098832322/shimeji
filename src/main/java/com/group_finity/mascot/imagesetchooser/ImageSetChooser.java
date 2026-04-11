@@ -3,6 +3,7 @@ package com.group_finity.mascot.imagesetchooser;
 import com.group_finity.mascot.Main;
 import com.group_finity.mascot.config.Configuration;
 import com.group_finity.mascot.config.Entry;
+import com.wishes.constant.Constant;
 import java.awt.Font;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
@@ -27,7 +28,10 @@ import org.w3c.dom.Document;
 public class ImageSetChooser extends javax.swing.JDialog
 {
     private final Path configPath = Paths.get( ".", "conf", "settings.properties" );	// Config file name
-    private final Path topDir = Paths.get( ".", "img" ); // Top Level Directory
+    // 根据开发/生产环境动态设置图片目录路径
+    private final Path topDir = Constant.isDevEnvironment 
+        ? Paths.get( ".", "src", "main", "resources", "img" )
+        : Paths.get( ".", "img" ); // Top Level Directory
     private ArrayList<String> imageSets = new ArrayList<String>( );
     private boolean closeProgram = true; // Whether the program closes on dispose
     private boolean selectAllSets = false; // Default all to selected
