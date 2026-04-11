@@ -40,11 +40,12 @@ public class UpdateJSONGenerator {
     @Before
     public void before() {
         data = new DataAnalysis();
-        data.setVersion("1.0.3 - beta 01");
-        data.setMessage("修复更新进度条窗口显示错乱的BUG\n\n注：本次更新会将所有文件下载到download文件夹中，" +
-                "待程序下载完毕后将download文件夹中所有文件直接复制到程序根目录下覆盖即可！");
-        data.setUrl("http://wishes-blog.cn/update/files/shimeji.jar");
-        data.setUpdateType(Constant.UPDATE_TYPE.BOTH.getType());
+        // 版本号从 pom.xml 中获取，当前版本为 1.0.4
+        data.setVersion("1.0.4");
+        // 精炼后的更新内容（不超过100字）
+        data.setMessage("支持MacOS 26系统;迁移至Logback日志框架并实现分级输出;新增可选调试窗口;修复所有已知CVE安全漏洞;优化DPI缩放支持;修复多项平台兼容性Bug,提升稳定性。");
+        data.setUrl("https://wishes-blog.cn/shimeji/1.0.4/shimeji.jar");
+        data.setUpdateType(Constant.UPDATE_TYPE.MAIN.getType());
     }
 
     /**
@@ -52,23 +53,9 @@ public class UpdateJSONGenerator {
      */
     @Test
     public void test() {
-        //更新cmd启动脚本
-        Node cmdNode = new Node();
-        cmdNode.setDeployPath("\\");//在根目录一级
-        cmdNode.setDownLoadURL("http://wishes-blog.cn/update/files/点我运行.cmd");
-        cmdNode.setName("点我运行.cmd");
-
-        //添加说明文档
-        Node readmeText = new Node();
-        readmeText.setDeployPath("\\download\\");//download目录
-        readmeText.setDownLoadURL("http://wishes-blog.cn/update/files/请先读我.txt");
-        readmeText.setName("请先读我.txt");
-
-        List<Node> list = new ArrayList<>();
-        list.add(cmdNode);
-        list.add(readmeText);
-
-        data.setNodeList(list);
+        // 根据用户需求，不生成任何 Node 节点
+        // 如需添加其他文件，请在生成前明确说明
+        data.setNodeList(new ArrayList<>());
 
         //转换成JSON字符串
         json = JSONObject.toJSONString(data);
@@ -81,16 +68,17 @@ public class UpdateJSONGenerator {
      */
     @After
     public void after() {
-        try {
-            FileOutputStream fos = new FileOutputStream(savePath);
+        try (FileOutputStream fos = new FileOutputStream(savePath)) {
             byte[] bytes = json.getBytes();
             fos.write(bytes);
             fos.flush();
-            fos.close();
+            System.out.println("\n✅ 更新文件已生成: " + savePath);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            logger.error("文件未找到: {}", savePath, e);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("写入文件失败: {}", savePath, e);
         }
     }
+
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(UpdateJSONGenerator.class);
 }

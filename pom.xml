@@ -25,6 +25,32 @@
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
+                <!-- 排除二进制文件,避免过滤时出错 -->
+                <excludes>
+                    <exclude>**/*.png</exclude>
+                    <exclude>**/*.jpg</exclude>
+                    <exclude>**/*.jpeg</exclude>
+                    <exclude>**/*.gif</exclude>
+                    <exclude>**/*.bmp</exclude>
+                    <exclude>**/*.ico</exclude>
+                    <exclude>**/*.db</exclude>
+                    <exclude>**/*.jar</exclude>
+                </excludes>
+            </resource>
+            <!-- 单独配置二进制文件,不过滤 -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <includes>
+                    <include>**/*.png</include>
+                    <include>**/*.jpg</include>
+                    <include>**/*.jpeg</include>
+                    <include>**/*.gif</include>
+                    <include>**/*.bmp</include>
+                    <include>**/*.ico</include>
+                    <include>**/*.db</include>
+                    <include>**/*.jar</include>
+                </includes>
             </resource>
         </resources>
 

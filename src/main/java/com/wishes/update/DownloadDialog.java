@@ -32,6 +32,20 @@ public class DownloadDialog extends JDialog {
         this.setTitle("检测更新");
         this.setResizable(false);
         this.setLocation(300, 300);
+        
+        // 设置支持中英文的字体，解决Mac系统下英文和数字显示问题
+        Font defaultFont = new Font("PingFang SC", Font.PLAIN, 13);
+        // 如果PingFang SC不可用，使用系统默认字体
+        if (!defaultFont.getFamily().equals("PingFang SC")) {
+            defaultFont = new Font("SansSerif", Font.PLAIN, 13);
+        }
+        
+        // 直接设置组件字体（包括非HTML组件）
+        versionInfo.setFont(defaultFont);
+        message.setFont(defaultFont);
+        licence.setFont(defaultFont);
+        buttonOK.setFont(defaultFont);
+        buttonCancel.setFont(defaultFont);
 
         setContentPane(contentPane);
         setModal(true);
@@ -85,17 +99,31 @@ public class DownloadDialog extends JDialog {
                 buttonOK.setEnabled(true);
 
                 //有更新
-                versionInfo.setText("检测更新： " + v.getVersion());
-                message.setText("<html><body>更新内容： <br><br>" + v.getWhatNew()
-                        .replaceAll("\n", "<br>") + "</body></html>");
+                String versionText = v.getVersion() != null ? v.getVersion() : "未知版本";
+                String whatNewText = v.getWhatNew() != null ? v.getWhatNew() : "无更新说明";
+                
+                // 确保在EDT线程中更新UI
+                SwingUtilities.invokeLater(() -> {
+                    versionInfo.setText("检测更新： " + versionText);
+                    // 在HTML中显式指定字体，解决Mac系统下字符间距问题
+                    message.setText("<html><body style='font-family: PingFang SC, Microsoft YaHei, sans-serif; line-height: 1.5;'>更新内容： <br><br>" + whatNewText
+                            .replaceAll("\n", "<br>") + "</body></html>");
+                });
             } else {
                 this.setTitle("关于");
                 //无更新
                 UpdateChecker.Version current = UpdateChecker.getCurrentVersionInfo();
-                versionInfo.setText("已更新到最新版： " + current.getVersion());
-                message.setText("<html><body>&copy;&nbsp;Wishes丶&nbsp;<br>" +
-                        "项目地址：&nbsp;<a href=''>Shimeji Project</a>" +
-                        "</body></html>");
+                String versionText = current.getVersion() != null ? current.getVersion() : "未知版本";
+                
+                // 确保在EDT线程中更新UI
+                SwingUtilities.invokeLater(() -> {
+                    versionInfo.setText("已更新到最新版： " + versionText);
+                    // 在HTML中显式指定字体，解决Mac系统下字符间距问题
+                    message.setText("<html><body style='font-family: PingFang SC, Microsoft YaHei, sans-serif; line-height: 1.5;'>&copy;&nbsp;Wishes丶&nbsp;<br>" +
+                            "项目地址：&nbsp;<a href=''>Shimeji Project</a>" +
+                            "</body></html>");
+                });
+                
                 //点击跳转
                 message.addMouseListener(new MouseAdapter() {
                     @Override
@@ -116,7 +144,7 @@ public class DownloadDialog extends JDialog {
             }
 
             //许可证明
-            licence.setText("<html><body>开源许可：&nbsp;<a href=''>GPL v3</a>" +
+            licence.setText("<html><body style='font-family: PingFang SC, Microsoft YaHei, sans-serif;'>开源许可：&nbsp;<a href=''>GPL v3</a>" +
                     "</body></html>");
             //添加鼠标点击跳转事件
             licence.addMouseListener(new MouseAdapter() {
@@ -229,13 +257,13 @@ public class DownloadDialog extends JDialog {
         panel3.setLayout(new BorderLayout(0, 0));
         contentPane.add(panel3, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, new Dimension(230, 10), new Dimension(230, 200), new Dimension(230, 200), 0, false));
         versionInfo = new JLabel();
-        versionInfo.setText("查询中...请稍后...");
+        versionInfo.setText("检测更新中...请稍后...");
         panel3.add(versionInfo, BorderLayout.NORTH);
         message = new JLabel();
         message.setText(" ");
         panel3.add(message, BorderLayout.CENTER);
         licence = new JLabel();
-        licence.setText("Label");
+        licence.setText("");
         panel3.add(licence, BorderLayout.SOUTH);
     }
 
