@@ -311,7 +311,8 @@ public class Main {
 
                 @Override
                 public void mouseReleased(MouseEvent event) {
-                    if (event.isPopupTrigger()) {
+                    // macOS 上 isPopupTrigger() 不会触发，需要同时检查鼠标按钮
+                    if (event.isPopupTrigger() || event.getButton() == MouseEvent.BUTTON1 || event.getButton() == MouseEvent.BUTTON3) {
                         // close the form if it's open
                         if (form != null)
                             form.dispose();
