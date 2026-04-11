@@ -4,7 +4,8 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import com.wishes.utils.UpdateChecker;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.awt.*;
@@ -15,7 +16,7 @@ public class DownloadDialog extends JDialog {
     /**
      * log
      */
-    private Logger logger = Logger.getLogger(DownloadDialog.class);
+    private Logger logger = LoggerFactory.getLogger(DownloadDialog.class);
 
     private String downloadURL = "";
 

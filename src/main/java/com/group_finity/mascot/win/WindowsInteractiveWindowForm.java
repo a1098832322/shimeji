@@ -1,7 +1,8 @@
 package com.group_finity.mascot.win;
 
 import com.group_finity.mascot.Main;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.io.FileOutputStream;
@@ -16,7 +17,7 @@ public class WindowsInteractiveWindowForm extends javax.swing.JDialog {
     /**
      * logger
      */
-    private Logger logger = Logger.getLogger(WindowsInteractiveWindowForm.class);
+    private Logger logger = LoggerFactory.getLogger(WindowsInteractiveWindowForm.class);
 
     private final String configFile = "./conf/settings.properties";    // Config file name
     ArrayList<String> listData = new ArrayList<>();

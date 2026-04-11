@@ -2,6 +2,7 @@ package com.group_finity.mascot.animation;
 
 import com.group_finity.mascot.Mascot;
 import com.group_finity.mascot.exception.VariableException;
+import com.group_finity.mascot.hotspot.Hotspot;
 import com.group_finity.mascot.script.Variable;
 import com.group_finity.mascot.script.VariableMap;
 
@@ -10,68 +11,90 @@ import com.group_finity.mascot.script.VariableMap;
  * Currently developed by Shimeji-ee Group.
  */
 
-public class Animation {
+public class Animation
+{
+    private Variable condition;
+    private final Pose[ ] poses;
+    private final Hotspot[ ] hotspots;
+    private boolean turn;
 
-	private Variable condition;
+    public Animation( final Variable condition, final Pose[ ] poses, final Hotspot[ ] hotspots, final boolean turn )
+    {
+        if( poses.length == 0 )
+        {
+            throw new IllegalArgumentException( "poses.length==0" );
+        }
 
-	private final Pose[] poses;
+        this.condition = condition;
+        this.poses = poses;
+        this.hotspots = hotspots;
+        this.turn = turn;
+    }
 
-	public Animation(final Variable condition, final Pose... poses) {
+    public boolean isEffective( final VariableMap variables ) throws VariableException
+    {
+        return (Boolean)getCondition( ).get( variables );
+    }
 
-		if (poses.length == 0) {
-			throw new IllegalArgumentException("poses.length==0");
-		}
+    public void init( )
+    {
+        getCondition( ).init( );
+    }
 
-		this.condition = condition;
-		this.poses = poses;
-	}
+    public void initFrame( )
+    {
+        getCondition( ).initFrame( );
+    }
 
-	public boolean isEffective(final VariableMap variables) throws VariableException {
-		return (Boolean) getCondition().get(variables);
-	}
+    public void next( final Mascot mascot, final int time )
+    {
+        getPoseAt( time ).next( mascot );
+    }
 
-	public void init() {
-		getCondition().init();
-	}
+    public Pose getPoseAt( int time )
+    {
+        time %= getDuration( );
 
-	public void initFrame() {
-		getCondition().initFrame();
-	}
+        for( final Pose pose : getPoses( ) )
+        {
+            time -= pose.getDuration( );
+            if( time < 0 )
+            {
+                return pose;
+            }
+        }
 
-	public void next(final Mascot mascot, final int time) {
-		getPoseAt(time).next(mascot);
-	}
+        return null;
+    }
 
-	public Pose getPoseAt(int time) {
+    public int getDuration( )
+    {
+        int duration = 0;
+        for( final Pose pose : getPoses( ) )
+        {
+            duration += pose.getDuration( );
+        }
 
-		time %= getDuration();
+        return duration;
+    }
 
-		for (final Pose pose : getPoses()) {
-			time -= pose.getDuration();
-			if (time < 0) {
-				return pose;
-			}
-		}
+    private Variable getCondition( )
+    {
+        return condition;
+    }
 
-		return null;
-	}
+    private Pose[ ] getPoses( )
+    {
+        return poses;
+    }
 
-	public int getDuration() {
-
-		int duration = 0;
-		for (final Pose pose : getPoses()) {
-			duration += pose.getDuration();
-		}
-
-		return duration;
-	}
-
-	private Variable getCondition() {
-		return this.condition;
-	}
-
-	private Pose[] getPoses() {
-		return this.poses;
-	}
-
+    public Hotspot[ ] getHotspots( )
+    {
+        return hotspots;
+    }
+        
+    public boolean isTurn( )
+    {
+        return turn;
+    }
 }

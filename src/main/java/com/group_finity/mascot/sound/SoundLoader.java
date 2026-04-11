@@ -1,5 +1,6 @@
 package com.group_finity.mascot.sound;
 
+import java.io.File;
 import java.io.IOException;
 import javax.sound.sampled.*;
 
@@ -17,7 +18,7 @@ public class SoundLoader
         if( Sounds.contains( name + volume ) )
             return;
         
-        AudioInputStream audioInputStream = AudioSystem.getAudioInputStream( SoundLoader.class.getResource( name ) );
+        AudioInputStream audioInputStream = AudioSystem.getAudioInputStream( new File( name ) );
         final Clip clip = AudioSystem.getClip( );
         clip.open( audioInputStream );
         ( (FloatControl) clip.getControl( FloatControl.Type.MASTER_GAIN ) ).setValue( volume );

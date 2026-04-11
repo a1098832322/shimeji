@@ -407,7 +407,7 @@ public class MenuScroller {
    * it last appeared.
    *
    * @param index the index of the item to keep visible
-   * @see #keepVisible(javax.swing.JMenuItem)
+   * @see #keepVisible(JMenuItem)
    */
   public void keepVisible(int index) {
     keepVisibleIndex = index;

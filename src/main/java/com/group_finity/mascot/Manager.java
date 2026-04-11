@@ -1,15 +1,17 @@
 package com.group_finity.mascot;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.group_finity.mascot.config.Configuration;
 import com.group_finity.mascot.exception.BehaviorInstantiationException;
 import com.group_finity.mascot.exception.CantBeAliveException;
+import java.awt.Point;
 
 /**
  * 
@@ -20,7 +22,7 @@ import com.group_finity.mascot.exception.CantBeAliveException;
  */
 public class Manager {
 
-	private static final Logger log = Logger.getLogger(Manager.class.getName());
+	private static final Logger log = LoggerFactory.getLogger(Manager.class);
 
 	/**
 	* Interval timer is running.
@@ -123,10 +125,10 @@ public class Manager {
 		}
 	}
 
-	private void tick() {
-
-		// Update the first environmental information
-		NativeFactory.getInstance().getEnvironment().tick();
+	private void tick( )
+        {
+            // Update the first environmental information
+            NativeFactory.getInstance().getEnvironment().tick();
 
 		synchronized (this.getMascots()) {
 
@@ -180,14 +182,15 @@ public class Manager {
 		synchronized (this.getMascots()) {
 			for (final Mascot mascot : this.getMascots()) {
 				try {
-					mascot.setBehavior(Main.getInstance().getConfiguration(mascot.getImageSet()).buildBehavior(name));
+                                    Configuration configuration = Main.getInstance( ).getConfiguration( mascot.getImageSet( ) );
+				    mascot.setBehavior( configuration.buildBehavior( configuration.getSchema( ).getString( name ), mascot ) );
 				} catch (final BehaviorInstantiationException e) {
-					log.log(Level.SEVERE, "Failed to initialize the following actions", e);
-					Main.showError( Main.getInstance( ).getLanguageBundle( ).getProperty( "FailedSetBehaviourErrorMessage" ) + "\n" + e.getMessage( ) + "\n" + Main.getInstance( ).getLanguageBundle( ).getProperty( "SeeLogForDetails" ) );
+					log.error("Failed to initialize the following actions", e);
+					Main.showError( Main.getInstance( ).getLanguageBundle( ).getProperty( "FailedSetBehaviourErrorMessage" ) );
 					mascot.dispose();
 				} catch (final CantBeAliveException e) {
-					log.log(Level.SEVERE, "Fatal Error", e);
-                                        Main.showError( Main.getInstance( ).getLanguageBundle( ).getProperty( "FailedSetBehaviourErrorMessage" ) + "\n" + e.getMessage( ) + "\n" + Main.getInstance( ).getLanguageBundle( ).getProperty( "SeeLogForDetails" ) );
+					log.error("Fatal Error", e);
+                                        Main.showError( Main.getInstance( ).getLanguageBundle( ).getProperty( "FailedSetBehaviourErrorMessage" ) );
 					mascot.dispose();
 				}
 			}
@@ -199,15 +202,15 @@ public class Manager {
 			for (final Mascot mascot : this.getMascots()) {
 				try {
 					if( mascot.getImageSet().equals(imageSet) ) {
-						mascot.setBehavior(configuration.buildBehavior(name));						
+						mascot.setBehavior(configuration.buildBehavior( configuration.getSchema( ).getString( name ), mascot ) );						
 					}
 				} catch (final BehaviorInstantiationException e) {
-					log.log(Level.SEVERE, "Failed to initialize the following actions", e);
-					Main.showError( Main.getInstance( ).getLanguageBundle( ).getProperty( "FailedSetBehaviourErrorMessage" ) + "\n" + e.getMessage( ) + "\n" + Main.getInstance( ).getLanguageBundle( ).getProperty( "SeeLogForDetails" ) );
+					log.error("Failed to initialize the following actions", e);
+					Main.showError( Main.getInstance( ).getLanguageBundle( ).getProperty( "FailedSetBehaviourErrorMessage" ) );
 					mascot.dispose();
 				} catch (final CantBeAliveException e) {
-					log.log(Level.SEVERE, "Fatal Error", e);
-					Main.showError( Main.getInstance( ).getLanguageBundle( ).getProperty( "FailedSetBehaviourErrorMessage" ) + "\n" + e.getMessage( ) + "\n" + Main.getInstance( ).getLanguageBundle( ).getProperty( "SeeLogForDetails" ) );
+					log.error("Fatal Error", e);
+					Main.showError( Main.getInstance( ).getLanguageBundle( ).getProperty( "FailedSetBehaviourErrorMessage" ) );
 					mascot.dispose();
 				}
 			}
@@ -221,7 +224,20 @@ public class Manager {
 				this.getMascots().get(i).dispose();				
 			}
 		}
-	}	
+        }
+        
+	public void remainOne( Mascot mascot )
+        {
+            synchronized( this.getMascots( ) )
+            {
+                int totalMascots = this.getMascots( ).size( );
+                for( int i = totalMascots - 1; i >= 0; --i )
+                {
+                    if( !this.getMascots( ).get( i ).equals( mascot ) )
+                        this.getMascots( ).get( i ).dispose( );
+                }
+            }
+	}
 	
 	public void remainOne( String imageSet ) {
 		synchronized (this.getMascots()) {
@@ -237,12 +253,88 @@ public class Manager {
 			}
 		}
 	}
+	
+    public void remainNone( String imageSet )
+    {
+        synchronized( this.getMascots( ) )
+        {
+            int totalMascots = this.getMascots( ).size( );
+            for( int i = totalMascots - 1; i >= 0; --i )
+            {
+                Mascot m = this.getMascots( ).get( i );
+                if( m.getImageSet( ).equals( imageSet ) )
+                    m.dispose( );
+            }
+        }
+    }
 
-	public int getCount() {
-		synchronized (this.getMascots()) {
-			return this.getMascots().size();
-		}
-	}
+    public void togglePauseAll( )
+    {
+        boolean isPaused = true;
+        
+        synchronized( this.getMascots( ) )
+        {
+            for( final Mascot mascot : this.getMascots( ) )
+            {
+                if( !mascot.isPaused( ) )
+                {
+                    isPaused = false;
+                    break;
+                }
+            }
+            
+            for( final Mascot mascot : this.getMascots( ) )
+            {
+                mascot.setPaused( !isPaused );
+            }
+        }
+    }
+
+    public boolean isPaused( )
+    {
+        boolean isPaused = true;
+        
+        synchronized( this.getMascots( ) )
+        {
+            for( final Mascot mascot : this.getMascots( ) )
+            {
+                if( !mascot.isPaused( ) )
+                {
+                    isPaused = false;
+                    break;
+                }
+            }
+        }
+        
+        return isPaused;
+    }
+
+    public int getCount( )
+    {
+        return getCount( null );
+    }
+    
+    public int getCount( String imageSet )
+    {
+        synchronized( getMascots( ) )
+        {
+            if( imageSet == null )
+            {
+                return getMascots( ).size( );
+            }
+            else   
+            {
+                int count = 0;
+                for( int index = 0; index < getMascots( ).size( ); index++ )
+                {
+                    Mascot m = getMascots( ).get( index );
+                    if( m.getImageSet( ).equals( imageSet ) )
+                        count++;
+                }
+                return count;
+            }
+        }
+    }
 
 	private List<Mascot> getMascots() {
 		return this.mascots;
@@ -255,6 +347,43 @@ public class Manager {
 	private Set<Mascot> getRemoved() {
 		return this.removed;
 	}
+        
+        /**
+         * Returns a Mascot with the given affordance.
+         * @param affordance
+         * @return A WeakReference to a mascot with the required affordance, or null
+         */
+        public WeakReference<Mascot> getMascotWithAffordance( String affordance )
+        {
+            synchronized( this.getMascots( ) )
+            {
+                for( final Mascot mascot : this.getMascots( ) )
+                {
+                    if( mascot.getAffordances( ).contains( affordance ) )
+                        return new WeakReference<Mascot>( mascot );
+                }
+            }
+            
+            return null;
+        }
+
+    public boolean hasOverlappingMascotsAtPoint( Point anchor )
+    {
+        int count = 0;
+        
+        synchronized( this.getMascots( ) )
+        {
+            for( final Mascot mascot : this.getMascots( ) )
+            {
+                if( mascot.getAnchor( ).equals( anchor ) )
+                    count++;
+                if( count > 1 )
+                    return true;
+            }
+        }
+
+        return false;
+    }
 
 	public void disposeAll() {
 		synchronized (this.getMascots()) {

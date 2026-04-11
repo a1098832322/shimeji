@@ -15,6 +15,6 @@ public interface IActionBuilder {
 
 	public void validate() throws ConfigurationException;
 
-	public Action buildAction(final Map<String, String> params) throws ActionInstantiationException;
+	public Action buildAction( final Map<String, String> params) throws ActionInstantiationException;
 
 }

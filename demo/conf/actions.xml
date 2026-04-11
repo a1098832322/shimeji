@@ -243,8 +243,14 @@
 			<Animation Condition="#{FootX &lt; mascot.environment.cursor.x-30}">
 				<Pose Image="/shime7.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
 			</Animation>
-			<Animation Condition="#{FootX &lt; mascot.environment.cursor.x+30}">
+			<Animation Condition="#{FootX &lt; mascot.environment.cursor.x}">
+				<Pose Image="/shime5.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+			</Animation>
+			<Animation Condition="#{FootX &gt; mascot.environment.cursor.x-10 &amp;&amp; FootX &lt; mascot.environment.cursor.x+10}">
 				<Pose Image="/shime1.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+			</Animation>
+			<Animation Condition="#{FootX &lt; mascot.environment.cursor.x+30}">
+				<Pose Image="/shime6.png" ImageAnchor="64,128" Velocity="0,0" Duration="5"/>
 			</Animation>
 			<Animation Condition="#{FootX &lt; mascot.environment.cursor.x+50}">
 				<Pose Image="/shime8.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />

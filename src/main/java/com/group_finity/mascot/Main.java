@@ -14,8 +14,10 @@ import com.wishes.fix.OriginEngineFix;
 import com.wishes.update.DownloadDialog;
 import com.wishes.utils.FormatUtils;
 import com.wishes.utils.UpdateChecker;
-import org.apache.log4j.xml.DOMConfigurator;
 import org.jb2011.lnf.beautyeye.BeautyEyeLNFHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
@@ -31,9 +33,6 @@ import java.awt.event.*;
 import java.io.*;
 import java.util.*;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.LogManager;
-import java.util.logging.Logger;
 
 /**
  * Program entry point.
@@ -44,20 +43,14 @@ import java.util.logging.Logger;
  * @modify: by Wishes 2018年10月
  */
 public class Main {
-    private static final Logger log = Logger.getLogger(Main.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(Main.class);
     // Action that matches the "Gather Around Mouse!" context menu command
     static final String BEHAVIOR_GATHER = "ChaseMouse";
 
     static {
-        try {
-            //加载log4j
-            DOMConfigurator.configureAndWatch("/log4j.xml");
-            LogManager.getLogManager().readConfiguration(OriginEngineFix.getInstance().propertiesLoder(Constant.isDevEnvironment, "logging.properties"));
-        } catch (final SecurityException e) {
-            e.printStackTrace();
-        } catch (final IOException e) {
-            e.printStackTrace();
-        }
+        // 安装 SLF4JBridgeHandler 以捕获 java.util.logging 调用
+        SLF4JBridgeHandler.removeHandlersForRootLogger();
+        SLF4JBridgeHandler.install();
     }
 
     private final Manager manager = new Manager();
@@ -92,22 +85,20 @@ public class Main {
                         new DownloadDialog();
                     }
                 } catch (java.net.SocketTimeoutException e) {
-                    log.log(Level.WARNING, "检测更新时连接超时，已跳过更新检查", e);
+                    log.warn("检测更新时连接超时，已跳过更新检查", e);
                 } catch (java.net.ConnectException e) {
-                    log.log(Level.WARNING, "检测更新时无法连接到服务器，已跳过更新检查", e);
+                    log.warn("检测更新时无法连接到服务器，已跳过更新检查", e);
                 } catch (IOException e) {
-                    log.log(Level.WARNING, "检测更新时发生网络错误，已跳过更新检查: " + e.getMessage(), e);
+                    log.warn("检测更新时发生网络错误，已跳过更新检查: {}", e.getMessage(), e);
                 } catch (Exception e) {
-                    log.log(Level.SEVERE, "检测更新时发生未知错误！", e);
+                    log.error("检测更新时发生未知错误！", e);
                 }
             }).start();
 
             //实例化程序主体
             getInstance().run();
         } catch (OutOfMemoryError err) {
-            log.log(Level.SEVERE, "Out of Memory Exception.  There are probably have too many "
-                    + "Shimeji mascots in the image folder for your computer to handle.  Select fewer"
-                    + " image sets or move some to the img/unused folder and try again.", err);
+            log.error("Out of Memory Exception.  There are probably have too many Shimeji mascots in the image folder for your computer to handle.", err);
             Main.showError("Out of Memory.  There are probably have too many \n"
                     + "Shimeji mascots for your computer to handle.\n"
                     + "Select fewer image sets or move some to the \n"
@@ -137,14 +128,29 @@ public class Main {
 
         //使用beauty eye皮肤包替代NimRODLookAndFeel皮肤包
         try {
-            /* 设置皮肤属性 */
-            BeautyEyeLNFHelper.frameBorderStyle = BeautyEyeLNFHelper.FrameBorderStyle.generalNoTranslucencyShadow;
-            UIManager.put("RootPane.setupButtonVisible", false);
-            BeautyEyeLNFHelper.translucencyAtFrameInactive = false;// 是否在窗口失焦时变成半透明状态
-            org.jb2011.lnf.beautyeye.BeautyEyeLNFHelper.launchBeautyEyeLNF();// 加载皮肤
+            // 检测操作系统，Mac 不使用 BeautyEye
+            String osName = System.getProperty("os.name").toLowerCase();
+            if (osName.contains("mac") || osName.contains("darwin")) {
+                // Mac 系统使用系统默认 LookAndFeel
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                log.info("Using system LookAndFeel for Mac");
+            } else {
+                // 其他系统使用 BeautyEye
+                /* 设置皮肤属性 */
+                BeautyEyeLNFHelper.frameBorderStyle = BeautyEyeLNFHelper.FrameBorderStyle.generalNoTranslucencyShadow;
+                UIManager.put("RootPane.setupButtonVisible", false);
+                BeautyEyeLNFHelper.translucencyAtFrameInactive = false;// 是否在窗口失焦时变成半透明状态
+                org.jb2011.lnf.beautyeye.BeautyEyeLNFHelper.launchBeautyEyeLNF();// 加载皮肤
+                log.info("Using BeautyEye LookAndFeel");
+            }
         } catch (Exception e) {
-            log.log(Level.SEVERE, "Look & Feel unsupported.", e);
-            exit();
+            log.error("Look & Feel unsupported, using default.", e);
+            // 如果失败，使用默认 LookAndFeel
+            try {
+                UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+            } catch (Exception ex) {
+                log.error("Failed to set default LookAndFeel", ex);
+            }
         }
 
         // Get the image sets to use
@@ -228,7 +234,7 @@ public class Main {
                 imageSet = FormatUtils.formatImagePath(imageSet);
             }
 
-            log.log(Level.INFO, imageSet + " Read Action File ({0})", actionsFile);
+            log.info("{} Read Action File ({})", imageSet, actionsFile);
 
             final Document actions = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(
                     new FileInputStream(new File(actionsFile)));
@@ -246,7 +252,7 @@ public class Main {
                 behaviorsFile = OriginEngineFix.getInstance().getBASE_IMG_PATH() + imageSet + "/conf/behaviors.xml";
             }
 
-            log.log(Level.INFO, imageSet + " Read Behavior File ({0})", behaviorsFile);
+            log.info("{} Read Behavior File ({})", imageSet, behaviorsFile);
 
             final Document behaviors = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(
                     new FileInputStream(new File(behaviorsFile)));
@@ -270,19 +276,19 @@ public class Main {
 
             return true;
         } catch (final IOException e) {
-            log.log(Level.SEVERE, "Failed to load configuration files", e);
+            log.error("Failed to load configuration files", e);
             Main.showError(languageBundle.getProperty("FailedLoadConfigErrorMessage") + "\n" + e.getMessage() + "\n" + languageBundle.getProperty("SeeLogForDetails"));
         } catch (final SAXException e) {
-            log.log(Level.SEVERE, "Failed to load configuration files", e);
+            log.error("Failed to load configuration files", e);
             Main.showError(languageBundle.getProperty("FailedLoadConfigErrorMessage") + "\n" + e.getMessage() + "\n" + languageBundle.getProperty("SeeLogForDetails"));
         } catch (final ParserConfigurationException e) {
-            log.log(Level.SEVERE, "Failed to load configuration files", e);
+            log.error("Failed to load configuration files", e);
             Main.showError(languageBundle.getProperty("FailedLoadConfigErrorMessage") + "\n" + e.getMessage() + "\n" + languageBundle.getProperty("SeeLogForDetails"));
         } catch (final ConfigurationException e) {
-            log.log(Level.SEVERE, "Failed to load configuration files", e);
+            log.error("Failed to load configuration files", e);
             Main.showError(languageBundle.getProperty("FailedLoadConfigErrorMessage") + "\n" + e.getMessage() + "\n" + languageBundle.getProperty("SeeLogForDetails"));
         } catch (final Exception e) {
-            log.log(Level.SEVERE, "Failed to load configuration files", e);
+            log.error("Failed to load configuration files", e);
             Main.showError(languageBundle.getProperty("FailedLoadConfigErrorMessage") + "\n" + e.getMessage() + "\n" + languageBundle.getProperty("SeeLogForDetails"));
         }
 
@@ -296,7 +302,7 @@ public class Main {
      * @ Throws IOException
      */
     private void createTrayIcon() {
-        log.log(Level.INFO, "create a tray icon");
+        log.info("create a tray icon");
 
         try {
             // Create the tray icon
@@ -773,11 +779,11 @@ public class Main {
             // Show tray icon
             SystemTray.getSystemTray().add(icon);
         } catch (final IOException e) {
-            log.log(Level.SEVERE, "Failed to create tray icon", e);
+            log.error("Failed to create tray icon", e);
             Main.showError(languageBundle.getProperty("FailedDisplaySystemTrayErrorMessage") + "\n" + languageBundle.getProperty("SeeLogForDetails"));
             exit();
         } catch (final AWTException e) {
-            log.log(Level.SEVERE, "Failed to create tray icon", e);
+            log.error("Failed to create tray icon", e);
             Main.showError(languageBundle.getProperty("FailedDisplaySystemTrayErrorMessage") + "\n" + languageBundle.getProperty("SeeLogForDetails"));
             exit();
         }
@@ -794,7 +800,7 @@ public class Main {
      * Create a mascot
      */
     public void createMascot(String imageSet) {
-        log.log(Level.INFO, "create a mascot");
+        log.info("create a mascot");
 
         // Create one mascot
         final Mascot mascot = new Mascot(imageSet);
@@ -806,18 +812,18 @@ public class Main {
         mascot.setLookRight(Math.random() < 0.5);
 
         try {
-            mascot.setBehavior(getConfiguration(imageSet).buildBehavior(null, mascot));
+            mascot.setBehavior(getConfiguration(imageSet).buildNextBehavior(null, mascot));
             this.getManager().add(mascot);
         } catch (final BehaviorInstantiationException e) {
-            log.log(Level.SEVERE, "Failed to initialize the first action", e);
+            log.error("Failed to initialize the first action", e);
             Main.showError(languageBundle.getProperty("FailedInitialiseFirstActionErrorMessage") + "\n" + e.getMessage() + "\n" + languageBundle.getProperty("SeeLogForDetails"));
             mascot.dispose();
         } catch (final CantBeAliveException e) {
-            log.log(Level.SEVERE, "Fatal Error", e);
+            log.error("Fatal Error", e);
             Main.showError(languageBundle.getProperty("FailedInitialiseFirstActionErrorMessage") + "\n" + e.getMessage() + "\n" + languageBundle.getProperty("SeeLogForDetails"));
             mascot.dispose();
         } catch (Exception e) {
-            log.log(Level.SEVERE, imageSet + " fatal error, can not be started.", e);
+            log.error("{} fatal error, can not be started.", imageSet, e);
             Main.showError(languageBundle.getProperty("CouldNotCreateShimejiErrorMessage") + imageSet + ".\n" + e.getMessage() + "\n" + languageBundle.getProperty("SeeLogForDetails"));
             mascot.dispose();
         }
@@ -828,7 +834,7 @@ public class Main {
         try {
             loadLanguageProp();
         } catch (IOException e) {
-            log.log(Level.SEVERE, "Fail to load Properties", e);
+            log.error("Fail to load Properties", e);
             e.printStackTrace();
         }
         boolean isExit = getManager().isExitOnLastRemoved();

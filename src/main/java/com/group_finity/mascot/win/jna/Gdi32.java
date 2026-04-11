@@ -21,17 +21,17 @@ public interface Gdi32 extends StdCallLibrary {
 
 	int DIB_RGB_COLORS = 0;
 
-	Pointer CreateDIBSection(Pointer hdc, BITMAPINFOHEADER pbmi, int iUsage, Pointer ppvBits, Pointer hSection, int dwOffset);
+	Pointer CreateDIBSection(Pointer hdc,BITMAPINFOHEADER pbmi,int iUsage,Pointer ppvBits,Pointer hSection,int dwOffset);
 
 	int GetObjectW(Pointer hgdiobj, int cbBuffer, BITMAP lpvObject);
 
 	int DeleteObject(Pointer hObject);
 
 	Pointer CreateRectRgn(
-            int nLeftRect,
-            int nTopRect,
-            int nRightRect,
-            int nBottomRect
-    );
-	int GetRgnBox(Pointer hrgn, RECT lprc);
+			  int nLeftRect,
+			  int nTopRect,
+			  int nRightRect,
+			  int nBottomRect
+			);
+	int GetRgnBox( Pointer hrgn, RECT lprc );
 }

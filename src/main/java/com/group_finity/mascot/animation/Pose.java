@@ -1,6 +1,7 @@
 package com.group_finity.mascot.animation;
 
 import java.awt.Point;
+import java.nio.file.Path;
 
 import com.group_finity.mascot.Mascot;
 import com.group_finity.mascot.image.ImagePair;
@@ -13,44 +14,44 @@ import com.group_finity.mascot.image.ImagePairs;
  */
 public class Pose
 {
-    private final String image;
-    private final String rightImage;
+    private final Path image;
+    private final Path rightImage;
     private final int dx;
     private final int dy;
     private final int duration;
     private final String sound;
 
-    public Pose( final String image )
+    public Pose( final Path image )
     {
-        this( image, "", 0, 0, 1 );
+        this( image, null, 0, 0, 1 );
     }
 
-    public Pose( final String image, final int duration )
+    public Pose( final Path image, final int duration )
     {
-        this( image, "", 0, 0, duration );
+        this( image, null, 0, 0, duration );
     }
 
-    public Pose( final String image, final int dx, final int dy, final int duration )
+    public Pose( final Path image, final int dx, final int dy, final int duration )
     {
-        this( image, "", dx, dy, duration );
+        this( image, null, dx, dy, duration );
     }
 
-    public Pose( final String image, final String rightImage )
+    public Pose( final Path image, final Path rightImage )
     {
         this( image, rightImage, 0, 0, 1 );
     }
 
-    public Pose( final String image, final String rightImage, final int duration )
+    public Pose( final Path image, final Path rightImage, final int duration )
     {
         this( image, rightImage, 0, 0, duration );
     }
 
-    public Pose( final String image, final String rightImage, final int dx, final int dy, final int duration )
+    public Pose( final Path image, final Path rightImage, final int dx, final int dy, final int duration )
     {
         this( image, rightImage, dx, dy, duration, null );
     }
 
-    public Pose( final String image, final String rightImage, final int dx, final int dy, final int duration, final String sound )
+    public Pose( final Path image, final Path rightImage, final int dx, final int dy, final int duration, final String sound )
     {
         this.image = image;
         this.rightImage = rightImage;
@@ -63,7 +64,7 @@ public class Pose
     @Override
     public String toString( )
     {
-        return "Pose (" + getImage( ) + "," + getDx( ) + "," + getDy( ) + "," + getDuration( ) + ", " + sound + ")";
+        return "Pose (" + ( getImage( ) == null ? "" : getImage( ) ) + "," + getDx( ) + "," + getDy( ) + "," + getDuration( ) + ", " + sound + ")";
     }
 
     public void next( final Mascot mascot )
@@ -81,7 +82,7 @@ public class Pose
 
     public String getImageName( )
     {
-        return image + ( rightImage == null ? "" : rightImage );
+        return ( image == null ? "" : image.toString( ) ) + ( rightImage == null ? "" : rightImage.toString( ) );
     }
 
     public ImagePair getImage( )

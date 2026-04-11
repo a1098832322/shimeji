@@ -1,7 +1,8 @@
 package com.group_finity.mascot.action;
 
 import java.util.List;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.group_finity.mascot.Mascot;
 import com.group_finity.mascot.animation.Animation;
@@ -16,7 +17,7 @@ import com.group_finity.mascot.script.VariableMap;
  */
 public abstract class BorderedAction extends ActionBase {
 
-	private static final Logger log = Logger.getLogger(BorderedAction.class.getName());
+	private static final Logger log = LoggerFactory.getLogger(BorderedAction.class);
 
 	private static final String PARAMETER_BORDERTYPE = "BorderType";
 
@@ -30,8 +31,9 @@ public abstract class BorderedAction extends ActionBase {
 
 	private Border border;
 
-	public BorderedAction(final List<Animation> animations, final VariableMap params) {
-		super(animations, params);
+	public BorderedAction( java.util.ResourceBundle schema, final List<Animation> animations, final VariableMap context )
+        {
+            super( schema, animations, context );
 	}
 
 	@Override
@@ -40,11 +42,11 @@ public abstract class BorderedAction extends ActionBase {
 
 		final String borderType = getBorderType();
 
-		if (BORDERTYPE_CEILING.equals(borderType)) {
+		if( getSchema( ).getString( BORDERTYPE_CEILING ).equals( borderType ) ) {
 			this.setBorder(getEnvironment().getCeiling());
-		} else if (BORDERTYPE_WALL.equals(borderType)) {
+		} else if( getSchema( ).getString( BORDERTYPE_WALL ).equals( borderType ) ) {
 			this.setBorder(getEnvironment().getWall());
-		} else if (BORDERTYPE_FLOOR.equals(borderType)) {
+		} else if( getSchema( ).getString( BORDERTYPE_FLOOR ).equals( borderType ) ) {
 			this.setBorder(getEnvironment().getFloor());
 		}
 	}
@@ -57,7 +59,7 @@ public abstract class BorderedAction extends ActionBase {
 	}
 
 	private String getBorderType() throws VariableException {
-		return eval(PARAMETER_BORDERTYPE, String.class, DEFAULT_BORDERTYPE);
+		return eval( getSchema( ).getString( PARAMETER_BORDERTYPE ), String.class, DEFAULT_BORDERTYPE);
 	}
 
 	private void setBorder(final Border border) {

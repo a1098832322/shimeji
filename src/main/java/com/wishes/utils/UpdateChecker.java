@@ -8,7 +8,8 @@ import com.wishes.update.DownloadWindow;
 import com.wishes.update.Node;
 import lombok.Data;
 import okhttp3.*;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -24,7 +25,7 @@ public class UpdateChecker {
     /**
      * logger
      */
-    private static Logger logger = Logger.getLogger(UpdateChecker.class);
+    private static Logger logger = LoggerFactory.getLogger(UpdateChecker.class);
 
     private static Version mCurrentVersion = new Version();
 

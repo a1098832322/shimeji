@@ -16,103 +16,108 @@ import com.group_finity.mascot.exception.VariableException;
  * Original Author: Yuki Yamada of Group Finity (http://www.group-finity.com/Shimeji/)
  * Currently developed by Shimeji-ee Group.
  */
+public class VariableMap extends AbstractMap<String, Object> implements Bindings
+{
+    private final Map<String, Variable> rawMap = new LinkedHashMap<String, Variable>( );
 
-public class VariableMap extends AbstractMap<String, Object> implements Bindings {
+    public Map<String, Variable> getRawMap( )
+    {
+        return this.rawMap;
+    }
 
-	private final Map<String, Variable> rawMap = new LinkedHashMap<String, Variable>();
+    public void init( )
+    {
+        for( final Variable o : this.getRawMap( ).values( ) )
+            o.init( );
+    }
 
-	public Map<String, Variable> getRawMap() {
-		return this.rawMap;
-	}
+    public void initFrame( )
+    {
+        for( final Variable o : this.getRawMap( ).values( ) )
+            o.initFrame( );
+    }
 
-	public void init() {
-		for (final Variable o : this.getRawMap().values()) {
-			o.init();
-		}
-	}
+    private final Set<Entry<String, Object>> entrySet = new AbstractSet<Entry<String, Object>>( )
+    {
+        @Override
+        public Iterator<Entry<String, Object>> iterator( )
+        {
+            return new Iterator<Entry<String, Object>>( )
+            {
+                private Iterator<Entry<String, Variable>> rawIterator = VariableMap.this.getRawMap( ).entrySet( ).iterator( );
 
-	public void initFrame() {
-		for (final Variable o : this.getRawMap().values()) {
-			o.initFrame();
-		}
-	}
+                @Override
+                public boolean hasNext( )
+                {
+                    return this.rawIterator.hasNext( );
+                }
 
-	private final Set<Map.Entry<String, Object>> entrySet = new AbstractSet<Entry<String, Object>>() {
+                @Override
+                public Entry<String, Object> next( )
+                {
+                    final Entry<String, Variable> rawKeyValue = this.rawIterator.next( );
+                    final Object value = rawKeyValue.getValue( );
 
-		@Override
-		public Iterator<Map.Entry<String, Object>> iterator() {
+                    return new Entry<String, Object>( )
+                    {
+                        @Override
+                        public String getKey( )
+                        {
+                            return rawKeyValue.getKey( );
+                        }
 
-			return new Iterator<Entry<String, Object>>() {
+                        @Override
+                        public Object getValue( )
+                        {
+                            try
+                            {
+                                return ( (Variable)value ).get( VariableMap.this );
+                            }
+                            catch( final VariableException e )
+                            {
+                                throw new RuntimeException( e );
+                            }
+                        }
 
-				private Iterator<Map.Entry<String, Variable>> rawIterator = VariableMap.this.getRawMap().entrySet()
-						.iterator();
+                        @Override
+                        public Object setValue( final Object value )
+                        {
+                            throw new UnsupportedOperationException( Main.getInstance( ).getLanguageBundle( ).getProperty( "SetValueNotSupportedErrorMessage" ) );
+                        }
+                    };
+                }
 
-				@Override
-				public boolean hasNext() {
-					return this.rawIterator.hasNext();
-				}
+                @Override
+                public void remove( )
+                {
+                    this.rawIterator.remove( );
+                }
+            };
+        }
 
-				@Override
-				public Map.Entry<String, Object> next() {
-					final Map.Entry<String, Variable> rawKeyValue = this.rawIterator.next();
-					final Object value = rawKeyValue.getValue();
+        @Override
+        public int size( )
+        {
+            return VariableMap.this.getRawMap( ).size( );
+        }
+    };
 
-					return new Map.Entry<String, Object>() {
+    @Override
+    public Set<Entry<String, Object>> entrySet( )
+    {
+        return this.entrySet;
+    }
 
-						@Override
-						public String getKey() {
-							return rawKeyValue.getKey();
-						}
+    @Override
+    public Object put( final String key, final Object value )
+    {
+        Object result;
 
-						@Override
-						public Object getValue() {
-							try {
-								return ((Variable) value).get(VariableMap.this);
-							} catch (final VariableException e) {
-								throw new RuntimeException(e);
-							}
-						}
+        if( value instanceof Variable )
+            result = this.getRawMap( ).put( key, (Variable)value );
+        else
+            result = this.getRawMap( ).put( key, new Constant( value ) );
 
-						@Override
-						public Object setValue(final Object value) {
-							throw new UnsupportedOperationException( Main.getInstance( ).getLanguageBundle( ).getProperty( "SetValueNotSupportedErrorMessage" ) );
-						}
-
-					};
-				}
-
-				@Override
-				public void remove() {
-					this.rawIterator.remove();
-				}
-
-			};
-		}
-
-		@Override
-		public int size() {
-			return VariableMap.this.getRawMap().size();
-		}
-
-	};
-
-	@Override
-	public Set<Map.Entry<String, Object>> entrySet() {
-		return this.entrySet;
-	}
-
-	@Override
-	public Object put(final String key, final Object value) {
-		Object result;
-		
-		if (value instanceof Variable) {
-			result = this.getRawMap().put(key, (Variable)value);
-		} else {
-			result = this.getRawMap().put(key, new Constant(value));
-		}
-
-		return result;
-
-	}
-
+        return result;
+    }
 }

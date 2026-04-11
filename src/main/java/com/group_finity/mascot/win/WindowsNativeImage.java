@@ -53,27 +53,28 @@ class WindowsNativeImage implements NativeImage {
 	private static void flushNative(final Pointer nativeHandle, final int[] rgb) {
 
 		final BITMAP bmp = new BITMAP();
-		Gdi32.INSTANCE.GetObjectW(nativeHandle, Main.getInstance( ).getPlatform( ).getBitmapSize( ) + Native.POINTER_SIZE, bmp);
+                Gdi32.INSTANCE.GetObjectW( nativeHandle, Main.getInstance( ).getPlatform( ).getBitmapSize( ) + Native.POINTER_SIZE, bmp );
 
-		// Copy at the pixel level.
-		final int width = bmp.bmWidth;
-		final int height = bmp.bmHeight;
+		// Copy at the pixel level. These dimensions are already scaled
+		int width = bmp.bmWidth;
+		int height = bmp.bmHeight;
 		final int destPitch = ((bmp.bmWidth*bmp.bmBitsPixel)+31)/32*4;
 		int destIndex = destPitch*(height-1);
-		int srcIndex = 0;
-        int premultipliedR, premultipliedG, premultipliedB, alpha;
+		int srcColIndex = 0;
+                
 		for( int y = 0; y < height; ++y )
 		{
 			for( int x = 0; x<width; ++x )
 			{
+                    
 				// UpdateLayeredWindow and Photoshop are incompatible ?Irashii
 				// UpdateLayeredWindow FFFFFF RGB value has the bug that it ignores the value of a,
 				// Photoshop is where a is an RGB value of 0 have the property value to 0.
 
-				bmp.bmBits.setInt(destIndex + x*4,
-					(rgb[srcIndex]&0xFF000000)==0 ? 0 : rgb[srcIndex] );
+				bmp.bmBits.setInt(destIndex + x*4L,
+					(rgb[srcColIndex]&0xFF000000)==0 ? 0 : rgb[srcColIndex] );
 
-				++srcIndex;
+				++srcColIndex;
 			}
 
 			destIndex -= destPitch;
@@ -99,16 +100,14 @@ class WindowsNativeImage implements NativeImage {
 	 */
 	private final Pointer nativeHandle;
 
-	/**
-	 * ARGB buffer used to transfer value.
-	 */
-	private final int[] rgb;
-
 	public WindowsNativeImage(final BufferedImage image) {
-		this.managedImage = image;
-		this.nativeHandle = createNative(this.getManagedImage().getWidth(), this.getManagedImage().getHeight());
-		this.rgb = new int[this.getManagedImage().getWidth() * this.getManagedImage().getHeight()];
-		update();
+
+	    this.managedImage = image;
+            this.nativeHandle = createNative(image.getWidth(), image.getHeight());
+            
+            int[] rbgValues = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+            
+            flushNative(this.getNativeHandle(), rbgValues);
 	}
 
 	@Override
@@ -117,64 +116,66 @@ class WindowsNativeImage implements NativeImage {
 		freeNative(this.getNativeHandle());
 	}
 
-	/**
-	 * Changes to be reflected in the Windows bitmap image.
-	 */
-	public void update() {
+    /**
+     * Changes to be reflected in the Windows bitmap image.
+     */
+    public void update( )
+    {
+        // this isn't used
+    }
 
-		this.getManagedImage().getRGB(0, 0, this.getManagedImage().getWidth(), this.getManagedImage().getHeight(), this.getRgb(), 0,
-				this.getManagedImage().getWidth());
+    public void flush( )
+    {
+        managedImage.flush( );
+    }
 
-		flushNative(this.getNativeHandle(), this.getRgb());
+    public Graphics getGraphics( )
+    {
+        return managedImage.createGraphics( );
+    }
 
-	}
+    public Pointer getHandle( )
+    {
+        return nativeHandle;
+    }
 
-	public void flush() {
-		this.getManagedImage().flush();
-	}
+    public int getHeight( )
+    {
+        return managedImage.getHeight( );
+    }
 
-	public Pointer getHandle() {
-		return this.getNativeHandle();
-	}
+    public int getWidth( )
+    {
+        return managedImage.getWidth( );
+    }
 
-	public Graphics getGraphics() {
-		return this.getManagedImage().createGraphics();
-	}
+    public int getHeight( final ImageObserver observer )
+    {
+        return managedImage.getHeight( observer );
+    }
 
-	public int getHeight() {
-		return this.getManagedImage().getHeight();
-	}
+    public Object getProperty( final String name, final ImageObserver observer )
+    {
+        return managedImage.getProperty( name, observer );
+    }
 
-	public int getWidth() {
-		return this.getManagedImage().getWidth();
-	}
+    public ImageProducer getSource( )
+    {
+        return managedImage.getSource( );
+    }
 
-	public int getHeight(final ImageObserver observer) {
-		return this.getManagedImage().getHeight(observer);
-	}
+    public int getWidth( final ImageObserver observer )
+    {
+        return managedImage.getWidth( observer );
+    }
 
-	public Object getProperty(final String name, final ImageObserver observer) {
-		return this.getManagedImage().getProperty(name, observer);
-	}
+    private BufferedImage getManagedImage( )
+    {
+        return managedImage;
+    }
 
-	public ImageProducer getSource() {
-		return this.getManagedImage().getSource();
-	}
-
-	public int getWidth(final ImageObserver observer) {
-		return this.getManagedImage().getWidth(observer);
-	}
-
-	private BufferedImage getManagedImage() {
-		return this.managedImage;
-	}
-
-	private Pointer getNativeHandle() {
-		return this.nativeHandle;
-	}
-
-	private int[] getRgb() {
-		return this.rgb;
-	}
-
+    private Pointer getNativeHandle( )
+    {
+        return nativeHandle;
+    }
 }

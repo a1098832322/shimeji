@@ -18,7 +18,6 @@ import com.sun.jna.examples.WindowUtils;
 
 class GenericTranslucentWindow extends JWindow implements TranslucentWindow {
     
-    private boolean alwaysOnTop = false;
 
 	/**
 	 * 
@@ -82,7 +81,7 @@ class GenericTranslucentWindow extends JWindow implements TranslucentWindow {
 	}
 	
 	@Override
-	public JWindow asJWindow() {
+	public Component asComponent() {
 		return this;
 	}
 
@@ -104,10 +103,4 @@ class GenericTranslucentWindow extends JWindow implements TranslucentWindow {
 		validate();
 		this.repaint();
 	}
-    
-    @Override
-    public void setStayOnTop( boolean newAlwaysOnTop )
-    {
-        alwaysOnTop = newAlwaysOnTop;
-    }
 }

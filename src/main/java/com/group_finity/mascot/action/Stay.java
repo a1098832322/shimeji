@@ -1,8 +1,8 @@
 package com.group_finity.mascot.action;
 
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.group_finity.mascot.animation.Animation;
 import com.group_finity.mascot.exception.LostGroundException;
@@ -15,11 +15,11 @@ import com.group_finity.mascot.script.VariableMap;
  */
 public class Stay extends BorderedAction {
 
-	private static final Logger log = Logger.getLogger(Stay.class.getName());
+	private static final Logger log = LoggerFactory.getLogger(Stay.class);
 
-	public Stay(final List<Animation> animations, final VariableMap params) {
-		super(animations, params);
-
+	public Stay( java.util.ResourceBundle schema, final List<Animation> animations, final VariableMap params )
+        {
+            super( schema, animations, params );
 	}
 
 	@Override
@@ -28,7 +28,7 @@ public class Stay extends BorderedAction {
 		super.tick();
 
 		if ((getBorder() != null) && !getBorder().isOn(getMascot().getAnchor())) {
-			log.log(Level.INFO, "Lost Ground ({0},{1})", new Object[] { getMascot(), this });
+			log.info("Lost Ground ({0},{1})", new Object[] { getMascot(), this });
 			throw new LostGroundException();
 		}
 

@@ -3,8 +3,8 @@ package com.group_finity.mascot.config;
 import com.group_finity.mascot.Main;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.group_finity.mascot.action.Action;
 import com.group_finity.mascot.exception.ActionInstantiationException;
@@ -17,7 +17,7 @@ import com.group_finity.mascot.exception.ConfigurationException;
 
 public class ActionRef implements IActionBuilder {
 
-	private static final Logger log = Logger.getLogger(ActionRef.class.getName());
+	private static final Logger log = LoggerFactory.getLogger(ActionRef.class);
 
 	private final Configuration configuration;
 
@@ -28,10 +28,10 @@ public class ActionRef implements IActionBuilder {
 	public ActionRef(final Configuration configuration, final Entry refNode) {
 		this.configuration = configuration;
 
-		this.name = refNode.getAttribute("Name");
+		this.name = refNode.getAttribute( configuration.getSchema( ).getString( "Name" ) );
 		this.getParams().putAll(refNode.getAttributes());
 
-		log.log(Level.INFO, "Read Action Reference({0})", this);
+		log.debug("Read Action Reference({})", this);
 	}
 
 	@Override
@@ -54,12 +54,12 @@ public class ActionRef implements IActionBuilder {
 	@Override
 	public void validate() throws ConfigurationException {
 		if (!getConfiguration().getActionBuilders().containsKey(getName())) {
-			log.log(Level.SEVERE, "There is no corresponding behavior(" + this + ")");		
+			log.error("There is no corresponding behavior({})", this);		
 			throw new ConfigurationException( Main.getInstance( ).getLanguageBundle( ).getProperty( "NoBehaviourFoundErrorMessage" ) + "(" + this + ")");
 		}
 	}
 
-	public Action buildAction(final Map<String, String> params) throws ActionInstantiationException {
+	public Action buildAction( final Map<String, String> params) throws ActionInstantiationException {
 		final Map<String, String> newParams = new LinkedHashMap<String, String>(params);
 		newParams.putAll(getParams());
 		return this.getConfiguration().buildAction(getName(), newParams);

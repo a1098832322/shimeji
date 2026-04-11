@@ -3,7 +3,8 @@ package com.wishes.fix;
 
 import com.wishes.constant.Constant;
 import lombok.Data;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -16,7 +17,7 @@ import java.util.Properties;
  */
 @Data
 public class OriginEngineFix {
-    private static Logger logger = Logger.getLogger(OriginEngineFix.class);
+    private static Logger logger = LoggerFactory.getLogger(OriginEngineFix.class);
 
     private String BASE_PATH = "";
 
@@ -48,12 +49,12 @@ public class OriginEngineFix {
         String path = "";
         if (isDevEnvironment) {
             //如果是开发环境
-            BASE_ENVIRONMENT_PATH = basePath + "\\src\\main\\resources\\conf\\";
-            BASE_IMG_PATH = basePath + "\\src\\main\\resources\\img\\";
+            BASE_ENVIRONMENT_PATH = basePath + "/src/main/resources/conf/";
+            BASE_IMG_PATH = basePath + "/src/main/resources/img/";
             path = BASE_ENVIRONMENT_PATH + fileName;
         } else {
-            BASE_ENVIRONMENT_PATH = basePath + "\\conf\\";
-            BASE_IMG_PATH = basePath + "\\img\\";
+            BASE_ENVIRONMENT_PATH = basePath + "/conf/";
+            BASE_IMG_PATH = basePath + "/img/";
             path = BASE_ENVIRONMENT_PATH + fileName;
         }
 

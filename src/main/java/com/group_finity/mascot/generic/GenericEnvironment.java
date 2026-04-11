@@ -21,6 +21,11 @@ class GenericEnvironment extends Environment {
 		this.activeIE.setVisible(false);
 	}
 
+    @Override
+    public void dispose( )
+    {
+    }
+
 	@Override
 	public void moveActiveIE(final Point point) {
 	}
@@ -39,6 +44,12 @@ class GenericEnvironment extends Environment {
 	public Area getActiveIE() {
 		return this.activeIE;
 	}
+        
+    @Override
+    public String getActiveIETitle( )
+    {
+        return null;
+    }
 
     @Override
     public void refreshCache()

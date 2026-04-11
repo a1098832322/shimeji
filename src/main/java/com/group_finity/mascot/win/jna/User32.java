@@ -2,6 +2,7 @@ package com.group_finity.mascot.win.jna;
 
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
+import com.sun.jna.examples.win32.User32.MSG;
 import com.sun.jna.win32.StdCallLibrary;
 
 /**
@@ -27,7 +28,7 @@ public interface User32 extends StdCallLibrary{
 	int GW_HWNDFIRST = 0;
 	int GW_HWNDNEXT = 2;
 
-	Pointer GetWindow(Pointer hWnd, int uCmd);
+	Pointer GetWindow(Pointer hWnd, int uCmd );
 
 	int IsWindow(Pointer hWnd);
 	int IsWindowVisible(Pointer hWnd);
@@ -42,6 +43,7 @@ public interface User32 extends StdCallLibrary{
 	int WS_EX_LAYERED = 0x00080000;
 
 	int IsIconic(Pointer hWnd);
+	int IsZoomed(Pointer hWnd);
 
 	int GetWindowTextW(Pointer hWnd, char[] lpString, int nMaxCount);
 	int GetClassNameW(Pointer hWnd, char[] lpString, int nMaxCount);
@@ -62,9 +64,9 @@ public interface User32 extends StdCallLibrary{
 	int ULW_ALPHA = 2;
 
 	int UpdateLayeredWindow(Pointer hWnd, Pointer hdcDst,
-                            POINT pptDst, SIZE psize,
-                            Pointer hdcSrc, POINT pptSrc, int crKey,
-                            BLENDFUNCTION pblend, int dwFlags);
+			POINT pptDst, SIZE psize,
+			Pointer hdcSrc, POINT pptSrc, int crKey,
+			BLENDFUNCTION pblend, int dwFlags );
 
     interface WNDENUMPROC extends StdCallCallback {
         /** Return whether to continue enumeration. */
@@ -73,4 +75,7 @@ public interface User32 extends StdCallLibrary{
 
     boolean EnumWindows(WNDENUMPROC lpEnumFunc, Pointer arg);
 
+    int SetProcessDPIAware( );
+    
+    //boolean GetMonitorInfoA( ) // TODO look into for future patches
 }

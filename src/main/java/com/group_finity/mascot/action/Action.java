@@ -10,24 +10,20 @@ import com.group_finity.mascot.exception.VariableException;
  */
 public interface Action {
 
-    /**
-     * @param mascot
-     */
-    public void init(Mascot mascot) throws VariableException;
+	/**
+	 * @param mascot 
+	 */
+	public void init(Mascot mascot) throws VariableException;
 
-    /**
-     * @return
-     */
-    public boolean hasNext() throws VariableException;
-
-    /**
-     * @throws LostGroundException
-     */
-    public void next() throws LostGroundException, VariableException;
-
-    /**
-     * 结束播放当前动画
-     */
-     void endCurrentAnimation();
-
+	/**
+	 * @return 
+	 */
+	public boolean hasNext() throws VariableException;
+	
+	/**
+	 * 
+	 * @throws LostGroundException 
+	 */
+	public void next() throws LostGroundException, VariableException;
+	
 }

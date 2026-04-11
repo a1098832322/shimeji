@@ -1,8 +1,9 @@
 package com.group_finity.mascot.sound;
 
 import com.group_finity.mascot.Main;
+import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.Hashtable;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.sound.sampled.Clip;
 
 /**
@@ -13,7 +14,7 @@ import javax.sound.sampled.Clip;
  */
 public class Sounds
 {
-    private final static Hashtable<String,Clip> SOUNDS = new Hashtable<String,Clip>( );
+    private final static ConcurrentHashMap<String,Clip> SOUNDS = new ConcurrentHashMap<String,Clip>( );
 
     public static void load( final String filename, final Clip clip )
     {
@@ -31,6 +32,21 @@ public class Sounds
         if( !SOUNDS.containsKey( filename ) )
             return null;
         return SOUNDS.get( filename );
+    }
+
+    public static ArrayList<Clip> getSoundsIgnoringVolume( String filename )
+    {
+        ArrayList<Clip> sounds = new ArrayList( 5 );
+        Enumeration<String> keys = SOUNDS.keys( );
+        while( keys.hasMoreElements( ) )
+        {
+            String soundName = keys.nextElement( );
+            if( soundName.startsWith( filename ) )
+            {
+                sounds.add( SOUNDS.get( soundName ) );
+            }
+        }
+        return sounds;
     }
     
     public static boolean isMuted( )

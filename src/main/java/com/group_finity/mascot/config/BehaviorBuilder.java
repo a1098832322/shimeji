@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.group_finity.mascot.behavior.Behavior;
 import com.group_finity.mascot.behavior.UserBehavior;
@@ -24,7 +24,7 @@ import com.group_finity.mascot.script.VariableMap;
 
 public class BehaviorBuilder {
 
-	private static final Logger log = Logger.getLogger(BehaviorBuilder.class.getName());
+	private static final Logger log = LoggerFactory.getLogger(BehaviorBuilder.class);
 
 	private final Configuration configuration;
 
@@ -37,6 +37,8 @@ public class BehaviorBuilder {
 	private final List<String> conditions;
 
 	private final boolean hidden;
+        
+        private final boolean toggleable;
 
 	private final boolean nextAdditive;
 
@@ -46,36 +48,49 @@ public class BehaviorBuilder {
 
 	public BehaviorBuilder(final Configuration configuration, final Entry behaviorNode, final List<String> conditions) {
 		this.configuration = configuration;
-		this.name = behaviorNode.getAttribute("Name");
-		this.actionName = behaviorNode.getAttribute("Action") == null ? getName() : behaviorNode.getAttribute("Action");
-		this.frequency = Integer.parseInt(behaviorNode.getAttribute("Frequency"));
-        this.hidden = Boolean.parseBoolean(behaviorNode.getAttribute("Hidden"));
+		this.name = behaviorNode.getAttribute( configuration.getSchema( ).getString( "Name" ) );
+		this.actionName = behaviorNode.getAttribute( configuration.getSchema( ).getString( "Action" ) ) == null ? getName( ) : behaviorNode.getAttribute( configuration.getSchema( ).getString( "Action" ) );
+		this.frequency = Integer.parseInt( behaviorNode.getAttribute( configuration.getSchema( ).getString( "Frequency" ) ) );
+                this.hidden = Boolean.parseBoolean( behaviorNode.getAttribute( configuration.getSchema( ).getString( "Hidden" ) ) );
 		this.conditions = new ArrayList<String>(conditions);
-		this.getConditions().add(behaviorNode.getAttribute("Condition"));
+		this.getConditions().add(behaviorNode.getAttribute( configuration.getSchema( ).getString( "Condition" ) ) );
+                
+                // override of toggleable state for required fields
+                if( name.equals( UserBehavior.BEHAVIOURNAME_FALL ) ||
+                    name.equals( UserBehavior.BEHAVIOURNAME_THROWN ) ||
+                    name.equals( UserBehavior.BEHAVIOURNAME_DRAGGED ) )
+                {
+                    toggleable = false;
+                }
+                else
+                {
+                    toggleable = Boolean.parseBoolean( behaviorNode.getAttribute( configuration.getSchema( ).getString( "Toggleable" ) ) );
+                }
+                
+		log.debug("Start Reading({})", this);
 
-		log.log(Level.INFO, "Start Reading({0})", this);
-
-		this.getParams().putAll(behaviorNode.getAttributes());
-		this.getParams().remove("Name");
-		this.getParams().remove("Action");
-		this.getParams().remove("Frequency");
-		this.getParams().remove("Hidden");
-		this.getParams().remove("Condition");
+		this.getParams( ).putAll( behaviorNode.getAttributes( ) );
+		this.getParams( ).remove( configuration.getSchema( ).getString( "Name" ) );
+		this.getParams( ).remove( configuration.getSchema( ).getString( "Action" ) );
+		this.getParams( ).remove( configuration.getSchema( ).getString( "Frequency" ) );
+		this.getParams( ).remove( configuration.getSchema( ).getString( "Hidden" ) );
+		this.getParams( ).remove( configuration.getSchema( ).getString( "Condition" ) );
+                this.getParams( ).remove( configuration.getSchema( ).getString( "Toggleable" ) );
 
 		boolean nextAdditive = true;
 
-		for (final Entry nextList : behaviorNode.selectChildren("NextBehaviorList")) {
+		for( final Entry nextList : behaviorNode.selectChildren( configuration.getSchema( ).getString( "NextBehaviourList" ) ) )
+                {
+			log.info("Lists the Following Behaviors...");
 
-			log.log(Level.INFO, "Lists the Following Behaviors...");
-
-			nextAdditive = Boolean.parseBoolean(nextList.getAttribute("Add"));
+			nextAdditive = Boolean.parseBoolean( nextList.getAttribute( configuration.getSchema( ).getString( "Add"  ) ) );
 
 			loadBehaviors(nextList, new ArrayList<String>());
 		}
 		
 		this.nextAdditive = nextAdditive;
 
-		log.log(Level.INFO, "Behaviors have finished loading({0})", this);
+		log.debug("Behaviors have finished loading({})", this);
 
 	}
 
@@ -88,14 +103,17 @@ public class BehaviorBuilder {
 		
 		for (final Entry node : list.getChildren()) {
 
-			if (node.getName().equals("Condition")) {
+			if( node.getName( ).equals( configuration.getSchema( ).getString( "Condition" ) ) )
+                        {
 
 				final List<String> newConditions = new ArrayList<String>(conditions);
-				newConditions.add(node.getAttribute("Condition"));
+				newConditions.add( node.getAttribute( configuration.getSchema( ).getString( "Condition" ) ) );
 
 				loadBehaviors(node, newConditions);
 
-			} else if (node.getName().equals("BehaviorReference")) {
+			}
+                        else if( node.getName( ).equals( configuration.getSchema( ).getString( "BehaviourReference" ) ) )
+                        {
 				final BehaviorBuilder behavior = new BehaviorBuilder(getConfiguration(), node, conditions);
 				getNextBehaviorBuilders().add(behavior);
 			}
@@ -105,7 +123,7 @@ public class BehaviorBuilder {
 	public void validate() throws ConfigurationException {
 		
 		if ( !getConfiguration().getActionBuilders().containsKey(getActionName()) ) {
-			log.log(Level.SEVERE, "There is no corresponding action(" + this + ")");			
+			log.error("There is no corresponding action({})", this);			
 			throw new ConfigurationException( Main.getInstance( ).getLanguageBundle( ).getProperty( "NoActionFoundErrorMessage" ) + "("+this+")");
 		}
 	}
@@ -115,26 +133,32 @@ public class BehaviorBuilder {
 		try {
 			return new UserBehavior(getName(),
 						getConfiguration().buildAction(getActionName(), 
-								getParams()), getConfiguration(), isHidden( ) );
+								getParams()), getConfiguration() );
 		} catch (final ActionInstantiationException e) {
-			log.log(Level.SEVERE, "Failed to initialize the corresponding action("+this+")");				
+			log.error("Failed to initialize the corresponding action({})", this);				
 			throw new BehaviorInstantiationException( Main.getInstance( ).getLanguageBundle( ).getProperty( "FailedInitialiseCorrespondingActionErrorMessage" ) + "("+this+")", e);
 		}
 	}
 
 	
-	public boolean isEffective(final VariableMap context) throws VariableException {
+    public boolean isEffective(final VariableMap context) throws VariableException
+    {
+        if( frequency == 0 )
+            return false;
 
-		for (final String condition : getConditions()) {
-			if (condition != null) {
-				if (!(Boolean) Variable.parse(condition).get(context)) {
-					return false;
-				}
-			}
-		}
+        for( final String condition : getConditions( ) )
+        {
+            if( condition != null )
+            {
+                if( !(Boolean)Variable.parse( condition ).get( context ) )
+                {
+                    return false;
+                }
+            }
+        }
 
-		return true;
-	}
+        return true;
+    }
 	
 	public String getName() {
 		return this.name;
@@ -144,9 +168,15 @@ public class BehaviorBuilder {
 		return this.frequency;
 	}
 
-	public boolean isHidden( ) {
-		return this.hidden;
-	}
+    public boolean isHidden( )
+    {
+        return hidden;
+    }
+
+    public boolean isToggleable( )
+    {
+        return toggleable;
+    }
 
 	private String getActionName() {
 		return this.actionName;

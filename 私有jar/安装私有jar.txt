@@ -14,3 +14,6 @@ mvn install:install-file -Dfile=forms_rt.jar -DgroupId=com.idea -DartifactId=for
 
 --beautyeye.jar
 mvn install:install-file -Dfile=beautyeye.jar -DgroupId=org.lnf -DartifactId=beautyeye -Dversion=1.0 -Dpackaging=jar
+
+--nimrodlf.jar
+mvn install:install0file -DgroupId=com.wishes -DartifactId=nimrodlf-origin -Dversion=1.0 -Dpackaging=jar

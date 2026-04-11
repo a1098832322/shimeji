@@ -1,32 +1,60 @@
 package com.group_finity.mascot.imagesetchooser;
 
 import com.group_finity.mascot.Main;
-
-import com.wishes.fix.OriginEngineFix;
-import com.wishes.utils.FormatUtils;
-
+import com.group_finity.mascot.config.Configuration;
+import com.group_finity.mascot.config.Entry;
+import java.awt.Font;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import javax.swing.DefaultListSelectionModel;
+import javax.swing.ImageIcon;
+import javax.swing.UIManager;
+import javax.xml.parsers.DocumentBuilderFactory;
+import org.w3c.dom.Document;
 
 /**
  * Chooser used to select the Shimeji image sets in use.
  */
-public class ImageSetChooser extends javax.swing.JDialog {
-    private final String configFile = OriginEngineFix.getInstance().getBASE_ENVIRONMENT_PATH() + "settings.properties";    // Config file name
-    private final String topDir = OriginEngineFix.getInstance().getBASE_IMG_PATH();    // Top Level Directory
-    private ArrayList<String> imageSets = new ArrayList<String>();
-    private boolean closeProgram = true;    // Whether the program closes on dispose
-    private boolean selectAllSets = false;    // Default all to selected
+public class ImageSetChooser extends javax.swing.JDialog
+{
+    private final Path configPath = Paths.get( ".", "conf", "settings.properties" );	// Config file name
+    private final Path topDir = Paths.get( ".", "img" ); // Top Level Directory
+    private ArrayList<String> imageSets = new ArrayList<String>( );
+    private boolean closeProgram = true; // Whether the program closes on dispose
+    private boolean selectAllSets = false; // Default all to selected
 
-    public ImageSetChooser(java.awt.Frame parent, boolean modal) {
-        super(parent, modal);
-        initComponents();
-        setLocationRelativeTo(null);
+    public ImageSetChooser( java.awt.Frame parent, boolean modal )
+    {
+        super( parent, modal );
+        initComponents( );
+        
+        // load icon
+        Image icon = null;
+        try
+        {
+            icon = new ImageIcon( Paths.get( ".", "img", "icon.png" ).toString( ) ).getImage( );
+        }
+        catch( final Exception e )
+        {
+            // not bothering reporting errors with loading the tray icon as it would have already been reported to the user by now
+        }
+        finally
+        {
+            if( icon == null )
+                icon = new BufferedImage( 16, 16, BufferedImage.TYPE_INT_RGB );
+        }
+        setIconImage( icon );
+        
+        setLocationRelativeTo( null );
 
         ArrayList<String> activeImageSets = readConfigFile();
 
@@ -36,126 +64,236 @@ public class ImageSetChooser extends javax.swing.JDialog {
         ArrayList<Integer> si2 = new ArrayList<Integer>();
 
         // Get list of imagesets (directories under img)
-        FilenameFilter fileFilter = new FilenameFilter() {
-            public boolean accept(File dir, String name) {
-                if (name.equals("unused") || name.equals(".svn")) {
+        FilenameFilter fileFilter = new FilenameFilter()
+        {
+            @Override
+            public boolean accept( File dir, String name )
+            {
+                if( name.equalsIgnoreCase( "unused" ) || name.startsWith( "." ) )
+                {
                     return false;
                 }
-                return new File(dir + "/" + name).isDirectory();
+                return new File( dir + File.separator + name ).isDirectory();
             }
         };
-        File dir = new File(topDir);
-        String[] children = dir.list(fileFilter);
+
+        String[ ] children = topDir.toFile( ).list( fileFilter );
 
         // Create ImageSetChooserPanels for ShimejiList
-        boolean onList1 = true;    //Toggle adding between the two lists
-        int row = 0;    // Current row
-        for (String imageSet : children) {
-            String imageFile = topDir + imageSet + "/shime1.png";
-
+        boolean onList1 = true;	//Toggle adding between the two lists
+        int row = 0;	// Current row
+        for( String imageSet : children )
+        {
             // Determine actions file
-            String actionsFile = OriginEngineFix.getInstance().getBASE_ENVIRONMENT_PATH() + "actions.xml";
-            if (new File(OriginEngineFix.getInstance().getBASE_ENVIRONMENT_PATH() + imageSet + "/actions.xml").exists()) {
-                actionsFile = OriginEngineFix.getInstance().getBASE_ENVIRONMENT_PATH() + imageSet + "/actions.xml";
-            } else if (new File(topDir + imageSet + "/conf/actions.xml").exists()) {
-                actionsFile = topDir + imageSet + "/conf/actions.xml";
-            }
+            Path filePath = Paths.get( ".", "conf" );
+            Path actionsPath = filePath.resolve( "actions.xml" );
+            if( filePath.resolve( "\u52D5\u4F5C.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "\u52D5\u4F5C.xml" );
+            
+            filePath = Paths.get( ".", "conf", imageSet );
+            if( filePath.resolve( "actions.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "actions.xml" );
+            else if( filePath.resolve( "\u52D5\u4F5C.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "\u52D5\u4F5C.xml" );
+            else if( filePath.resolve( "\u00D5\u00EF\u00F2\u00F5\u00A2\u00A3.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "\u00D5\u00EF\u00F2\u00F5\u00A2\u00A3.xml" );
+            else if( filePath.resolve( "\u00A6-\u00BA@.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "\u00A6-\u00BA@.xml" );
+            else if( filePath.resolve( "\u00F4\u00AB\u00EC\u00FD.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "\u00F4\u00AB\u00EC\u00FD.xml" );
+            else if( filePath.resolve( "one.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "one.xml" );
+            else if( filePath.resolve( "1.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "1.xml" );
+            
+            filePath = Paths.get( ".", "img", imageSet, "conf" );
+            if( filePath.resolve( "actions.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "actions.xml" );
+            else if( filePath.resolve( "\u52D5\u4F5C.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "\u52D5\u4F5C.xml" );
+            else if( filePath.resolve( "\u00D5\u00EF\u00F2\u00F5\u00A2\u00A3.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "\u00D5\u00EF\u00F2\u00F5\u00A2\u00A3.xml" );
+            else if( filePath.resolve( "\u00A6-\u00BA@.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "\u00A6-\u00BA@.xml" );
+            else if( filePath.resolve( "\u00F4\u00AB\u00EC\u00FD.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "\u00F4\u00AB\u00EC\u00FD.xml" );
+            else if( filePath.resolve( "one.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "one.xml" );
+            else if( filePath.resolve( "1.xml" ).toFile( ).exists( ) )
+                actionsPath = filePath.resolve( "1.xml" );
 
-            // Determine behaviors file
-            String behaviorsFile = OriginEngineFix.getInstance().getBASE_ENVIRONMENT_PATH() + "behaviors.xml";
-            if (new File(OriginEngineFix.getInstance().getBASE_ENVIRONMENT_PATH() + imageSet + "/behaviors.xml").exists()) {
-                behaviorsFile = OriginEngineFix.getInstance().getBASE_ENVIRONMENT_PATH() + imageSet + "/behaviors.xml";
-            } else if (new File(topDir + imageSet + "/conf/behaviors.xml").exists()) {
-                behaviorsFile = topDir + imageSet + "/conf/behaviors.xml";
-            }
+            // Determine behaviours file
+            filePath = Paths.get( ".", "conf" );
+            Path behaviorsPath = filePath.resolve( "behaviors.xml" );
+            if( filePath.resolve( "\u884C\u52D5.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "\u884C\u52D5.xml" );
+            
+            filePath = Paths.get( ".", "conf", imageSet );
+            if( filePath.resolve( "behaviors.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "behaviors.xml" );
+            else if( filePath.resolve( "behavior.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "behavior.xml" );
+            else if( filePath.resolve( "\u884C\u52D5.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "\u884C\u52D5.xml" );
+            else if( filePath.resolve( "\u00DE\u00ED\u00EE\u00D5\u00EF\u00F2.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "\u00DE\u00ED\u00EE\u00D5\u00EF\u00F2.xml" );
+            else if( filePath.resolve( "\u00AA\u00B5\u00A6-.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "\u00AA\u00B5\u00A6-.xml" );
+            else if( filePath.resolve( "\u00ECs\u00F4\u00AB.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "\u00ECs\u00F4\u00AB.xml" );
+            else if( filePath.resolve( "two.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "two.xml" );
+            else if( filePath.resolve( "2.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "2.xml" );
+            
+            filePath = Paths.get( ".", "img", imageSet, "conf" );
+            if( filePath.resolve( "behaviors.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "behaviors.xml" );
+            else if( filePath.resolve( "behavior.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "behavior.xml" );
+            else if( filePath.resolve( "\u884C\u52D5.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "\u884C\u52D5.xml" );
+            else if( filePath.resolve( "\u00DE\u00ED\u00EE\u00D5\u00EF\u00F2.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "\u00DE\u00ED\u00EE\u00D5\u00EF\u00F2.xml" );
+            else if( filePath.resolve( "\u00AA\u00B5\u00A6-.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "\u00AA\u00B5\u00A6-.xml" );
+            else if( filePath.resolve( "\u00ECs\u00F4\u00AB.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "\u00ECs\u00F4\u00AB.xml" );
+            else if( filePath.resolve( "two.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "two.xml" );
+            else if( filePath.resolve( "2.xml" ).toFile( ).exists( ) )
+                behaviorsPath = filePath.resolve( "2.xml" );
+            
+            // Determine information file
+            filePath = Paths.get( ".", "conf" );
+            Path infoPath = filePath.resolve( "info.xml" );
+            
+            filePath = Paths.get( ".", "conf", imageSet );
+            if( filePath.resolve( "info.xml" ).toFile( ).exists( ) )
+                infoPath = filePath.resolve( "info.xml" );
+            
+            filePath = Paths.get( ".", "img", imageSet, "conf" );
+            if( filePath.resolve( "info.xml" ).toFile( ).exists( ) )
+                infoPath = filePath.resolve( "info.xml" );
 
-            if (onList1) {
-                onList1 = false;
-                data1.add(new ImageSetChooserPanel(imageSet, actionsFile,
-                        behaviorsFile, imageFile));
-                // Is this set initially selected?
-                if (activeImageSets.contains(imageSet) || selectAllSets) {
-                    si1.add(row);
+            String imageFile = topDir.resolve( Paths.get( imageSet, "shime1.png" ) ).toString( );
+            String caption = imageSet;
+            try
+            {
+                Configuration configuration = new Configuration( );
+                
+                if( infoPath.toFile( ).exists( ) )
+                {
+                    final Document information = DocumentBuilderFactory.newInstance( ).newDocumentBuilder( ).parse( new FileInputStream( infoPath.toFile( ) ) );
+
+                    configuration.load( new Entry( information.getDocumentElement( ) ), imageSet );
                 }
-            } else {
-                onList1 = true;
-                data2.add(new ImageSetChooserPanel(imageSet, actionsFile,
-                        behaviorsFile, imageFile));
+                
+                if( configuration.containsInformationKey( configuration.getSchema( ).getString( "Name" ) ) )
+                    caption = configuration.getInformation( configuration.getSchema( ).getString( "Name" ) );
+                if( configuration.containsInformationKey( configuration.getSchema( ).getString( "PreviewImage" ) ) )
+                    imageFile = topDir.resolve( Paths.get( imageSet, configuration.getInformation( configuration.getSchema( ).getString( "PreviewImage" ) ) ) ).toString( );
+            }
+            catch( Exception ex )
+            {
+                imageFile = topDir.resolve( Paths.get( imageSet, "shime1.png" ) ).toString( );
+                caption = imageSet;
+            }
+
+            if( onList1 )
+            {
+                onList1 = false;
+                data1.add( new ImageSetChooserPanel( imageSet, actionsPath.toString( ),
+                                                     behaviorsPath.toString( ), imageFile, caption ) );
                 // Is this set initially selected?
-                if (activeImageSets.contains(imageSet) || selectAllSets) {
-                    si2.add(row);
+                if( activeImageSets.contains( imageSet ) || selectAllSets )
+                {
+                    si1.add( row );
+                }
+            }
+            else
+            {
+                onList1 = true;
+                data2.add( new ImageSetChooserPanel( imageSet, actionsPath.toString( ),
+                                                     behaviorsPath.toString( ), imageFile, caption ) );
+                // Is this set initially selected?
+                if( activeImageSets.contains( imageSet ) || selectAllSets )
+                {
+                    si2.add( row );
                 }
                 row++; //Only increment the row number after the second column
             }
-            imageSets.add(FormatUtils.formatImagePath(OriginEngineFix
-                    .getInstance().getBASE_IMG_PATH() + imageSet));
+            imageSets.add( imageSet );
         }
 
-        setUpList1();
-        jList1.setListData(data1.toArray());
-        jList1.setSelectedIndices(convertIntegers(si1));
+        setUpList( jList1 );
+        jList1.setListData( data1.toArray() );
+        jList1.setSelectedIndices( convertIntegers( si1 ) );
 
-        setUpList2();
-        jList2.setListData(data2.toArray());
-        jList2.setSelectedIndices(convertIntegers(si2));
-
-        //左右两列设置item的长度(设置定长，防止在不同皮肤包中被压缩显示)
-        jList1.setFixedCellHeight(90);
-        jList2.setFixedCellHeight(90);
+        setUpList( jList2 );
+        jList2.setListData( data2.toArray() );
+        jList2.setSelectedIndices( convertIntegers( si2 ) );
     }
 
-    public ArrayList<String> display() {
-        setTitle(Main.getInstance().getLanguageBundle().getProperty("ShimejiImageSetChooser"));
-        jLabel1.setText(Main.getInstance().getLanguageBundle().getProperty("SelectImageSetsToUse"));
-        useSelectedButton.setText(Main.getInstance().getLanguageBundle().getProperty("UseSelected"));
-        useAllButton.setText(Main.getInstance().getLanguageBundle().getProperty("UseAll"));
-        cancelButton.setText(Main.getInstance().getLanguageBundle().getProperty("Cancel"));
-        clearAllLabel.setText(Main.getInstance().getLanguageBundle().getProperty("ClearAll"));
-        selectAllLabel.setText(Main.getInstance().getLanguageBundle().getProperty("SelectAll"));
-        setVisible(true);
-        if (closeProgram) {
+    public ArrayList<String> display( )
+    {
+        setTitle( Main.getInstance( ).getLanguageBundle( ).getProperty( "ShimejiImageSetChooser" ) );
+        jLabel1.setText( Main.getInstance( ).getLanguageBundle( ).getProperty( "SelectImageSetsToUse" ) );
+        useSelectedButton.setText( Main.getInstance( ).getLanguageBundle( ).getProperty( "UseSelected" ) );
+        useAllButton.setText( Main.getInstance( ).getLanguageBundle( ).getProperty( "UseAll" ) );
+        cancelButton.setText( Main.getInstance( ).getLanguageBundle( ).getProperty( "Cancel" ) );
+        clearAllLabel.setText( Main.getInstance( ).getLanguageBundle( ).getProperty( "ClearAll" ) );
+        selectAllLabel.setText( Main.getInstance( ).getLanguageBundle( ).getProperty( "SelectAll" ) );
+        selectAllLabel.setFont( selectAllLabel.getFont( ).deriveFont( Font.BOLD ) );
+        clearAllLabel.setFont( clearAllLabel.getFont( ).deriveFont( Font.BOLD ) );
+        selectAllLabel.setForeground( UIManager.getColor( "Button.focus" ) );
+        clearAllLabel.setForeground( UIManager.getColor( "Button.focus" ) );
+        setVisible( true );
+        if( closeProgram )
+        {
             return null;
         }
         return imageSets;
     }
 
-    private ArrayList<String> readConfigFile() {
+    private ArrayList<String> readConfigFile( )
+    {
         // now with properties style loading!
-        ArrayList<String> activeImageSets = new ArrayList<String>();
-        activeImageSets.addAll(Arrays.asList(Main.getInstance().getProperties().getProperty("ActiveShimeji", "").split("/")));
-        selectAllSets = activeImageSets.get(0).trim().isEmpty(); // if no active ones, activate them all!
+        ArrayList<String> activeImageSets = new ArrayList<String>( );
+        activeImageSets.addAll( Arrays.asList( Main.getInstance( ).getProperties( ).getProperty( "ActiveShimeji", "" ).split( "/" ) ) );
+        selectAllSets = activeImageSets.get( 0 ).trim( ).isEmpty( ); // if no active ones, activate them all!
         return activeImageSets;
     }
 
-    private void updateConfigFile() {
-        try {
-            FileOutputStream output = new FileOutputStream(configFile);
-            try {
-                List saveList = new ArrayList();
-                //过滤并还原值
-                imageSets.forEach(s -> {
-                    s = s.substring(s.lastIndexOf("/") + 1);
-                    saveList.add(s);
-                });
-
-                Main.getInstance().getProperties().setProperty("ActiveShimeji", saveList.toString().replace("[", "").replace("]", "").replace(", ", "/"));
-                Main.getInstance().getProperties().store(output, "Shimeji-ee Configuration Options");
-            } finally {
-                output.close();
+    private void updateConfigFile( )
+    {
+        try
+        {
+            FileOutputStream output = new FileOutputStream( configPath.toFile( ) );
+            try
+            {
+                Main.getInstance( ).getProperties( ).setProperty( "ActiveShimeji", imageSets.toString( ).replace( "[", "" ).replace( "]", "" ).replace( ", ", "/" ) );
+                Main.getInstance( ).getProperties( ).store( output, "Shimeji-ee Configuration Options" );
             }
-        } catch (Exception e) {
+            finally
+            {
+                output.close( );
+            }
+        }
+        catch( Exception e )
+        {
             // Doesn't matter at all
         }
     }
 
-    /**
-     * This method is called from within the constructor to
+    /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
      * always regenerated by the Form Editor.
      */
     // <editor-fold defaultstate="collapsed" desc="Generated Code">
-    private void initComponents() {
+    private void initComponents()
+    {
 
         jScrollPane1 = new javax.swing.JScrollPane();
         jPanel2 = new javax.swing.JPanel();
@@ -171,144 +309,155 @@ public class ImageSetChooser extends javax.swing.JDialog {
         slashLabel = new javax.swing.JLabel();
         selectAllLabel = new javax.swing.JLabel();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        setTitle("Shimeji-ee Image Set Chooser");
-        setMinimumSize(new java.awt.Dimension(670, 495));
+        setDefaultCloseOperation( javax.swing.WindowConstants.DISPOSE_ON_CLOSE );
+        setTitle( "Shimeji-ee Image Set Chooser" );
+        setMinimumSize( new java.awt.Dimension( 670, 495 ) );
 
-        jScrollPane1.setPreferredSize(new java.awt.Dimension(518, 100));
+        jScrollPane1.setPreferredSize( new java.awt.Dimension( 518, 100 ) );
 
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout( jPanel2 );
+        jPanel2.setLayout( jPanel2Layout );
         jPanel2Layout.setHorizontalGroup(
-                jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(jPanel2Layout.createSequentialGroup()
-                                .addComponent(jList1, javax.swing.GroupLayout.DEFAULT_SIZE, 298, Short.MAX_VALUE)
-                                .addGap(0, 0, 0)
-                                .addComponent(jList2, javax.swing.GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE)));
+                jPanel2Layout.createParallelGroup( javax.swing.GroupLayout.Alignment.LEADING )
+                .addGroup( jPanel2Layout.createSequentialGroup()
+                .addComponent( jList1, javax.swing.GroupLayout.DEFAULT_SIZE, 298, Short.MAX_VALUE )
+                .addGap( 0, 0, 0 )
+                .addComponent( jList2, javax.swing.GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE ) ) );
         jPanel2Layout.setVerticalGroup(
-                jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addComponent(jList2, javax.swing.GroupLayout.DEFAULT_SIZE, 376, Short.MAX_VALUE)
-                        .addComponent(jList1, javax.swing.GroupLayout.DEFAULT_SIZE, 376, Short.MAX_VALUE));
+                jPanel2Layout.createParallelGroup( javax.swing.GroupLayout.Alignment.LEADING )
+                .addComponent( jList2, javax.swing.GroupLayout.DEFAULT_SIZE, 376, Short.MAX_VALUE )
+                .addComponent( jList1, javax.swing.GroupLayout.DEFAULT_SIZE, 376, Short.MAX_VALUE ) );
 
-        jScrollPane1.setViewportView(jPanel2);
+        jScrollPane1.setViewportView( jPanel2 );
 
-        jLabel1.setText("Select Image Sets to Use:");
+        jLabel1.setText( "Select Image Sets to Use:" );
 
-        jPanel1.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 10, 5));
+        jPanel1.setLayout( new java.awt.FlowLayout( java.awt.FlowLayout.CENTER, 10, 5 ) );
 
-        useSelectedButton.setText("Use Selected");
-        useSelectedButton.setMaximumSize(new java.awt.Dimension(130, 26));
-        useSelectedButton.setPreferredSize(new java.awt.Dimension(130, 26));
-        useSelectedButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                useSelectedButtonActionPerformed(evt);
+        useSelectedButton.setText( "Use Selected" );
+        useSelectedButton.setMaximumSize( new java.awt.Dimension( 130, 26 ) );
+        useSelectedButton.setPreferredSize( new java.awt.Dimension( 130, 26 ) );
+        useSelectedButton.addActionListener( new java.awt.event.ActionListener()
+        {
+            public void actionPerformed( java.awt.event.ActionEvent evt )
+            {
+                useSelectedButtonActionPerformed( evt );
             }
-        });
-        jPanel1.add(useSelectedButton);
+        } );
+        jPanel1.add( useSelectedButton );
 
-        useAllButton.setText("Use All");
-        useAllButton.setMaximumSize(new java.awt.Dimension(95, 23));
-        useAllButton.setMinimumSize(new java.awt.Dimension(95, 23));
-        useAllButton.setPreferredSize(new java.awt.Dimension(130, 26));
-        useAllButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                useAllButtonActionPerformed(evt);
+        useAllButton.setText( "Use All" );
+        useAllButton.setMaximumSize( new java.awt.Dimension( 95, 23 ) );
+        useAllButton.setMinimumSize( new java.awt.Dimension( 95, 23 ) );
+        useAllButton.setPreferredSize( new java.awt.Dimension( 130, 26 ) );
+        useAllButton.addActionListener( new java.awt.event.ActionListener()
+        {
+            public void actionPerformed( java.awt.event.ActionEvent evt )
+            {
+                useAllButtonActionPerformed( evt );
             }
-        });
-        jPanel1.add(useAllButton);
+        } );
+        jPanel1.add( useAllButton );
 
-        cancelButton.setText("Cancel");
-        cancelButton.setMaximumSize(new java.awt.Dimension(95, 23));
-        cancelButton.setMinimumSize(new java.awt.Dimension(95, 23));
-        cancelButton.setPreferredSize(new java.awt.Dimension(130, 26));
-        cancelButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                cancelButtonActionPerformed(evt);
+        cancelButton.setText( "Cancel" );
+        cancelButton.setMaximumSize( new java.awt.Dimension( 95, 23 ) );
+        cancelButton.setMinimumSize( new java.awt.Dimension( 95, 23 ) );
+        cancelButton.setPreferredSize( new java.awt.Dimension( 130, 26 ) );
+        cancelButton.addActionListener( new java.awt.event.ActionListener()
+        {
+            public void actionPerformed( java.awt.event.ActionEvent evt )
+            {
+                cancelButtonActionPerformed( evt );
             }
-        });
-        jPanel1.add(cancelButton);
+        } );
+        jPanel1.add( cancelButton );
 
-        jPanel4.setLayout(new javax.swing.BoxLayout(jPanel4, javax.swing.BoxLayout.LINE_AXIS));
+        jPanel4.setLayout( new javax.swing.BoxLayout( jPanel4, javax.swing.BoxLayout.LINE_AXIS ) );
 
-        clearAllLabel.setForeground(new java.awt.Color(0, 0, 204));
-        clearAllLabel.setText("Clear All");
-        clearAllLabel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        clearAllLabel.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                clearAllLabelMouseClicked(evt);
+        clearAllLabel.setText( "Clear All" );
+        clearAllLabel.setCursor( new java.awt.Cursor( java.awt.Cursor.HAND_CURSOR ) );
+        clearAllLabel.addMouseListener( new java.awt.event.MouseAdapter()
+        {
+            public void mouseClicked( java.awt.event.MouseEvent evt )
+            {
+                clearAllLabelMouseClicked( evt );
             }
-        });
-        jPanel4.add(clearAllLabel);
+        } );
+        jPanel4.add( clearAllLabel );
 
-        slashLabel.setText(" / ");
-        jPanel4.add(slashLabel);
+        slashLabel.setText( " / " );
+        jPanel4.add( slashLabel );
 
-        selectAllLabel.setForeground(new java.awt.Color(0, 0, 204));
-        selectAllLabel.setText("Select All");
-        selectAllLabel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        selectAllLabel.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                selectAllLabelMouseClicked(evt);
+        selectAllLabel.setText( "Select All" );
+        selectAllLabel.setCursor( new java.awt.Cursor( java.awt.Cursor.HAND_CURSOR ) );
+        selectAllLabel.addMouseListener( new java.awt.event.MouseAdapter()
+        {
+            public void mouseClicked( java.awt.event.MouseEvent evt )
+            {
+                selectAllLabelMouseClicked( evt );
             }
-        });
-        jPanel4.add(selectAllLabel);
+        } );
+        jPanel4.add( selectAllLabel );
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout( getContentPane() );
+        getContentPane().setLayout( layout );
         layout.setHorizontalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                                .addContainerGap()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 600, Short.MAX_VALUE)
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addComponent(jLabel1)
-                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 384, Short.MAX_VALUE)
-                                                .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 600, Short.MAX_VALUE))
-                                .addContainerGap()));
+                layout.createParallelGroup( javax.swing.GroupLayout.Alignment.LEADING )
+                .addGroup( layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup( layout.createParallelGroup( javax.swing.GroupLayout.Alignment.LEADING )
+                .addComponent( jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 600, Short.MAX_VALUE )
+                .addGroup( layout.createSequentialGroup()
+                .addComponent( jLabel1 )
+                .addPreferredGap( javax.swing.LayoutStyle.ComponentPlacement.RELATED, 384, Short.MAX_VALUE )
+                .addComponent( jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE ) )
+                .addComponent( jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 600, Short.MAX_VALUE ) )
+                .addContainerGap() ) );
         layout.setVerticalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                                .addContainerGap()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                        .addComponent(jLabel1)
-                                        .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 378, Short.MAX_VALUE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(11, 11, 11)));
+                layout.createParallelGroup( javax.swing.GroupLayout.Alignment.LEADING )
+                .addGroup( layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup( layout.createParallelGroup( javax.swing.GroupLayout.Alignment.TRAILING )
+                .addComponent( jLabel1 )
+                .addComponent( jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE ) )
+                .addPreferredGap( javax.swing.LayoutStyle.ComponentPlacement.RELATED )
+                .addComponent( jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 378, Short.MAX_VALUE )
+                .addPreferredGap( javax.swing.LayoutStyle.ComponentPlacement.UNRELATED )
+                .addComponent( jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE )
+                .addGap( 11, 11, 11 ) ) );
 
         pack();
     }// </editor-fold>
 
-    private void clearAllLabelMouseClicked(java.awt.event.MouseEvent evt) {
+    private void clearAllLabelMouseClicked( java.awt.event.MouseEvent evt )
+    {
         jList1.clearSelection();
         jList2.clearSelection();
     }
 
-    private void selectAllLabelMouseClicked(java.awt.event.MouseEvent evt) {
-        jList1.setSelectionInterval(0, jList1.getModel().getSize() - 1);
-        jList2.setSelectionInterval(0, jList2.getModel().getSize() - 1);
+    private void selectAllLabelMouseClicked( java.awt.event.MouseEvent evt )
+    {
+        jList1.setSelectionInterval( 0, jList1.getModel().getSize() - 1 );
+        jList2.setSelectionInterval( 0, jList2.getModel().getSize() - 1 );
     }
 
-    private void useSelectedButtonActionPerformed(java.awt.event.ActionEvent evt) {
+    private void useSelectedButtonActionPerformed( java.awt.event.ActionEvent evt )
+    {
         imageSets.clear();
 
-        for (Object obj : jList1.getSelectedValues()) {
-            if (obj instanceof ImageSetChooserPanel) {
-                String objPath = ((ImageSetChooserPanel) obj).getImageSetName();
-                imageSets.add(FormatUtils.formatImagePath(OriginEngineFix.getInstance()
-                        .getBASE_IMG_PATH() + objPath));
+        for( Object obj : jList1.getSelectedValues() )
+        {
+            if( obj instanceof ImageSetChooserPanel )
+            {
+                imageSets.add( ( ( ImageSetChooserPanel ) obj ).getImageSetName() );
             }
         }
 
-        for (Object obj : jList2.getSelectedValues()) {
-            if (obj instanceof ImageSetChooserPanel) {
-                String objPath = ((ImageSetChooserPanel) obj).getImageSetName();
-                imageSets.add(FormatUtils.formatImagePath(OriginEngineFix.getInstance()
-                        .getBASE_IMG_PATH() + objPath));
+        for( Object obj : jList2.getSelectedValues() )
+        {
+            if( obj instanceof ImageSetChooserPanel )
+            {
+                imageSets.add( ( ( ImageSetChooserPanel ) obj ).getImageSetName() );
             }
         }
 
@@ -317,61 +466,60 @@ public class ImageSetChooser extends javax.swing.JDialog {
         this.dispose();
     }
 
-    private void useAllButtonActionPerformed(java.awt.event.ActionEvent evt) {
+    private void useAllButtonActionPerformed( java.awt.event.ActionEvent evt )
+    {
         closeProgram = false;
         this.dispose();
     }
 
-    private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {
+    private void cancelButtonActionPerformed( java.awt.event.ActionEvent evt )
+    {
         this.dispose();
     }
 
-    private int[] convertIntegers(List<Integer> integers) {
-        int[] ret = new int[integers.size()];
-        for (int i = 0; i < ret.length; i++) {
-            ret[i] = integers.get(i).intValue();
+    private int[] convertIntegers( List<Integer> integers )
+    {
+        int[] ret = new int[ integers.size() ];
+        for( int i = 0; i < ret.length; i++ )
+        {
+            ret[i] = integers.get( i ).intValue();
         }
         return ret;
     }
 
-    private void setUpList1() {
-        jList1.setSelectionModel(new DefaultListSelectionModel() {
+    private void setUpList( javax.swing.JList list )
+    {
+        list.setSelectionModel( new DefaultListSelectionModel( )
+        {
             @Override
-            public void setSelectionInterval(int index0, int index1) {
-                if (isSelectedIndex(index0)) {
-                    super.removeSelectionInterval(index0, index1);
-                } else {
-                    super.addSelectionInterval(index0, index1);
+            public void setSelectionInterval( int index0, int index1 )
+            {
+                if( isSelectedIndex( index0 ) )
+                {
+                    super.removeSelectionInterval( index0, index1 );
+                }
+                else
+                {
+                    super.addSelectionInterval( index0, index1 );
                 }
             }
-        });
-    }
-
-    private void setUpList2() {
-        jList2.setSelectionModel(new DefaultListSelectionModel() {
-            @Override
-            public void setSelectionInterval(int index0, int index1) {
-                if (isSelectedIndex(index0)) {
-                    super.removeSelectionInterval(index0, index1);
-                } else {
-                    super.addSelectionInterval(index0, index1);
-                }
-            }
-        });
+        } );
     }
 
     /**
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new ImageSetChooser(new javax.swing.JFrame(), true).display();
-                System.exit(0);
+    public static void main( String args[] )
+    {
+        java.awt.EventQueue.invokeLater( new Runnable()
+        {
+            public void run()
+            {
+                new ImageSetChooser( new javax.swing.JFrame(), true ).display( );
+                System.exit( 0 );
             }
-        });
+        } );
     }
-
     // Variables declaration - do not modify
     private javax.swing.JButton cancelButton;
     private javax.swing.JLabel clearAllLabel;

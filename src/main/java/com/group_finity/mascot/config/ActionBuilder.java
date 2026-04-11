@@ -7,8 +7,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.ResourceBundle;
 
 import com.group_finity.mascot.action.Action;
 import com.group_finity.mascot.action.Animate;
@@ -31,50 +32,58 @@ import com.group_finity.mascot.script.VariableMap;
 
 public class ActionBuilder implements IActionBuilder {
 
-	private static final Logger log = Logger.getLogger(ActionBuilder.class.getName());
-
+	private static final Logger log = LoggerFactory.getLogger( ActionBuilder.class.getName( ) );
 	private final String type;
-
 	private final String name;
-
 	private final String className;
+	private final Map<String, String> params = new LinkedHashMap<String, String>( );
+	private final List<AnimationBuilder> animationBuilders = new ArrayList<AnimationBuilder>( );
+	private final List<IActionBuilder> actionRefs = new ArrayList<IActionBuilder>( );
+        private final ResourceBundle schema;
 
-	private final Map<String, String> params = new LinkedHashMap<String, String>();
+	public ActionBuilder( final Configuration configuration, final Entry actionNode, final String imageSet ) throws ConfigurationException
+        {
+            schema = configuration.getSchema( );
+            name = actionNode.getAttribute( schema.getString( "Name" ) );
+            type = actionNode.getAttribute( schema.getString( "Type" ) );
+            className = actionNode.getAttribute( schema.getString( "Class" ) );
+            
+            
+            try
+            {
+                getParams( ).putAll( actionNode.getAttributes( ) );
+                for( final Entry node : actionNode.selectChildren( schema.getString( "Animation" ) ) )
+                {
+                    getAnimationBuilders( ).add( new AnimationBuilder( schema, node, imageSet ) );
+                }
 
-	private final List<AnimationBuilder> animationBuilders = new ArrayList<AnimationBuilder>();
+                for( final Entry node : actionNode.getChildren( ) )
+                {
+                    if( node.getName( ).equals( schema.getString( "ActionReference" ) ) )
+                    {
+                        getActionRefs( ).add( new ActionRef( configuration, node ) );
+                    }
+                    else if( node.getName( ).equals( schema.getString( "Action" ) ) )
+                    {
+                        getActionRefs( ).add( new ActionBuilder( configuration, node, imageSet ) );
+                    }
+                }
+            }
+            catch( ConfigurationException e )
+            {
+                throw new ConfigurationException( Main.getInstance( ).getLanguageBundle( ).getProperty( "FailedLoadActionErrorMessage" ) + " \"" + name + "\" " + Main.getInstance( ).getLanguageBundle( ).getProperty( "ForShimeji" ) + " \"" + imageSet + "\".", e );
+            }
 
-	private final List<IActionBuilder> actionRefs = new ArrayList<IActionBuilder>();
-
-	public ActionBuilder(final Configuration configuration, final Entry actionNode, final String imageSet) throws IOException {
-		this.name = actionNode.getAttribute("Name");
-		this.type = actionNode.getAttribute("Type");
-		this.className = actionNode.getAttribute("Class");
-
-		log.log(Level.INFO, "Read Start Operation({0})", this);
-
-		this.getParams().putAll(actionNode.getAttributes());
-		for (final Entry node : actionNode.selectChildren("Animation")) {
-			this.getAnimationBuilders().add(new AnimationBuilder(node,imageSet));
-		}
-
-		for (final Entry node : actionNode.getChildren()) {
-			if (node.getName().equals("ActionReference")) {
-				this.getActionRefs().add(new ActionRef(configuration, node));
-			} else if (node.getName().equals("Action")) {
-				this.getActionRefs().add(new ActionBuilder(configuration, node, imageSet));
-			}
-		}
-
-		log.log(Level.INFO, "Actions Finished Loading");
 	}
 
 	@Override
-	public String toString() {
-		return "Action(" + getName() + "," + getType() + "," + getClassName() + ")";
+	public String toString( )
+        {
+	    return "Action(" + getName( ) + "," + getType( ) + "," + getClassName( ) + ")";
 	}
 
 	@SuppressWarnings("unchecked")
-	public Action buildAction(final Map<String, String> params) throws ActionInstantiationException {
+	public Action buildAction( final Map<String, String> params) throws ActionInstantiationException {
 
 		try {
 			// Create Variable Map
@@ -84,20 +93,21 @@ public class ActionBuilder implements IActionBuilder {
 			final List<Animation> animations = createAnimations();
 
 			// Create Child Actions
-			final List<Action> actions = createActions();
+			final List<Action> actions = createActions( );
 
-			if (this.type.equals("Embedded")) {
+			if( this.type.equals( schema.getString( "Embedded" ) ) )
+                        {
 				try {
 					final Class<? extends Action> cls = (Class<? extends Action>) Class.forName(this.getClassName());
 					try {
 
 						try {
-							return cls.getConstructor(List.class, VariableMap.class).newInstance(animations, variables);
+							return cls.getConstructor( ResourceBundle.class, List.class, VariableMap.class ).newInstance( schema, animations, variables);
 						} catch (final Exception e) {
 							// NOTE There's no constructor
 						}
 
-						return cls.getConstructor(VariableMap.class).newInstance(variables);
+						return cls.getConstructor( ResourceBundle.class, VariableMap.class ).newInstance( schema, variables );
 					} catch (final Exception e) {
 						// NOTE There's no constructor
 					}
@@ -111,18 +121,18 @@ public class ActionBuilder implements IActionBuilder {
 					throw new ActionInstantiationException( Main.getInstance( ).getLanguageBundle( ).getProperty( "ClassNotFoundErrorMessage" ) + "(" + this + ")", e);
 				}
 
-			} else if (this.type.equals("Move")) {
-				return new Move(animations, variables);
-			} else if (this.type.equals("Stay")) {
-				return new Stay(animations, variables);
-			} else if (this.type.equals("Animate")) {
-				return new Animate(animations, variables);
-			} else if (this.type.equals("Sequence")) {
-				return new Sequence(variables, actions.toArray(new Action[0]));
-			} else if (this.type.equals("Select")) {
-				return new Select(variables, actions.toArray(new Action[0]));
+			} else if( this.type.equals( schema.getString( "Move" ) ) ) {
+                            return new Move( schema, animations, variables );
+			} else if( this.type.equals( schema.getString( "Stay" ) ) ) {
+                            return new Stay( schema, animations, variables);
+			} else if( this.type.equals( schema.getString( "Animate" ) ) ) {
+                            return new Animate( schema, animations, variables);
+			} else if( this.type.equals( schema.getString( "Sequence" ) ) ) {
+                            return new Sequence( schema, variables, actions.toArray(new Action[0]));
+			} else if( this.type.equals( schema.getString( "Select" ) ) ) {
+                            return new Select( schema, variables, actions.toArray(new Action[0]));
 			} else {
-				throw new ActionInstantiationException( Main.getInstance( ).getLanguageBundle( ).getProperty( "UnknownActionTypeErrorMessage" ) + "(" + this + ")");
+                            throw new ActionInstantiationException( Main.getInstance( ).getLanguageBundle( ).getProperty( "UnknownActionTypeErrorMessage" ) + "(" + this + ")");
 			}
 
 		} catch (final AnimationInstantiationException e) {
@@ -139,10 +149,10 @@ public class ActionBuilder implements IActionBuilder {
 		}
 	}
 	
-	private List<Action> createActions() throws ActionInstantiationException {
+	private List<Action> createActions( ) throws ActionInstantiationException {
 		final List<Action> actions = new ArrayList<Action>();
 		for (final IActionBuilder ref : this.getActionRefs()) {
-			actions.add(ref.buildAction(new HashMap<String, String>()));
+			actions.add( ref.buildAction( new HashMap<String, String>( ) ) );
 		}
 		return actions;
 	}

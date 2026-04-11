@@ -1,7 +1,8 @@
 package com.group_finity.mascot.action;
 
 import java.util.List;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.group_finity.mascot.animation.Animation;
 import com.group_finity.mascot.exception.LostGroundException;
@@ -14,11 +15,11 @@ import com.group_finity.mascot.script.VariableMap;
  */
 public class Animate extends BorderedAction {
 
-	private static final Logger log = Logger.getLogger(Animate.class.getName());
+	private static final Logger log = LoggerFactory.getLogger(Animate.class);
 
-	public Animate(final List<Animation> animations, final VariableMap params) {
-		super(animations, params);
-
+	public Animate( java.util.ResourceBundle schema, final List<Animation> animations, final VariableMap context )
+        {
+            super( schema, animations, context );
 	}
 
 	@Override

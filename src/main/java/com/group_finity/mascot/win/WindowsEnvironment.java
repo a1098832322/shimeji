@@ -8,10 +8,16 @@ import java.util.LinkedHashMap;
 
 import com.group_finity.mascot.environment.Area;
 import com.group_finity.mascot.environment.Environment;
+import com.group_finity.mascot.win.jna.Dwmapi;
 import com.group_finity.mascot.win.jna.Gdi32;
 import com.group_finity.mascot.win.jna.RECT;
 import com.group_finity.mascot.win.jna.User32;
+import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
+import com.sun.jna.ptr.LongByReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Original Author: Yuki Yamada of Group Finity (http://www.group-finity.com/Shimeji/)
@@ -19,97 +25,174 @@ import com.sun.jna.Pointer;
  */
 class WindowsEnvironment extends Environment
 {
-    private static Rectangle getWorkAreaRect()
-    {
-        final RECT rect = new RECT();
-        User32.INSTANCE.SystemParametersInfoW( User32.SPI_GETWORKAREA, 0, rect, 0 );
-        return new Rectangle( rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top );
-    }
     private static HashMap<Pointer, Boolean> ieCache = new LinkedHashMap<Pointer, Boolean>();
+    
+    public static Area workArea = new Area();
+    
+    public static Area activeIE = new Area();
+    
+    private static Pointer activeIEobject = null;
 
     private static String[ ] windowTitles = null;
+
+    private static String[ ] windowTitlesBlacklist = null;
     
+    private enum IEResult { INVALID, NOT_IE, IE_OUT_OF_BOUNDS, IE };
+    
+    private static final Logger log = LoggerFactory.getLogger(Environment.class);
+        
     private static boolean isIE( final Pointer ie )
     {
-
-        final Boolean cache = ieCache.get( ie );
-        if( cache != null )
-        {
-            return cache;
-        }
+        final Boolean cachedValue = ieCache.get( ie );
+        if( cachedValue != null )
+            return cachedValue;
 
         final char[] title = new char[ 1024 ];
 
         final int titleLength = User32.INSTANCE.GetWindowTextW( ie, title, 1024 );
+        
+        final String ieTitle = new String( title, 0, titleLength );
 
-        if( windowTitles == null )
+        // optimisation to remove empty windows from consideration without the loop.
+        // Program Manager hard coded exception as there's issues if we mess with it
+        if( ieTitle.isEmpty( ) || ieTitle.equals( "Program Manager" ) )
         {
-            windowTitles = Main.getInstance( ).getProperties( ).getProperty( "InteractiveWindows", "" ).split( "/" );
+            ieCache.put( ie, false );
+            return false;
         }
         
-        for( int index = 0; index < windowTitles.length; index++ )
+        // blacklist takes precedence over whitelist
+        boolean blacklistInUse = false;
+        if( windowTitlesBlacklist == null )
+            windowTitlesBlacklist = Main.getInstance( ).getProperties( ).getProperty( "InteractiveWindowsBlacklist", "" ).split( "/" );
+        for( String windowTitle : windowTitlesBlacklist )
         {
-            if( !windowTitles[ index ].trim( ).isEmpty( ) && new String( title, 0, titleLength ).contains( windowTitles[ index ] ) )
+            if( !windowTitle.trim( ).isEmpty( ) )
             {
-                ieCache.put( ie, true );
-                return true;
+                blacklistInUse = true;
+                if( ieTitle.contains( windowTitle ) )
+                {
+                    ieCache.put( ie, false );
+                    return false;
+                }
             }
         }
 
-//        RIP MSN
-//        final char[] className = new char[ 1024 ];
-//
-//        final int classNameLength = User32.INSTANCE.GetClassNameW( ie, className, 1024 );
-//
-//        if( new String( className, 0, classNameLength ).contains( "IMWindowClass" ) )
-//        {
-//            ieCache.put( ie, true );
-//            return true;
-//        }
-
-        ieCache.put( ie, false );
-        return false;
+        // whitelist
+        boolean whitelistInUse = false;
+        if( windowTitles == null )
+            windowTitles = Main.getInstance( ).getProperties( ).getProperty( "InteractiveWindows", "" ).split( "/" );
+        for( String windowTitle : windowTitles )
+        {
+            if( !windowTitle.trim( ).isEmpty( ) )
+            {
+                whitelistInUse = true;
+                if( ieTitle.contains( windowTitle ) )
+                {
+                    ieCache.put( ie, true );
+                    return true;
+                }
+            }
+        }
+        
+        if( whitelistInUse || !blacklistInUse )
+        {
+            ieCache.put( ie, false );
+            return false;
+        }
+        else
+        {
+            ieCache.put( ie, true );
+            return true;
+        }
     }
-    static int f;
+    
+    private static IEResult isViableIE( Pointer ie )
+    {
+        if( User32.INSTANCE.IsWindowVisible( ie ) != 0 )
+        {
+            // metro apps can be closed or minimised and still be considered "visible" by User32
+            // have to consider the new cloaked variable instead
+            LongByReference flagsRef = new LongByReference( );
+            NativeLong result = Dwmapi.INSTANCE.DwmGetWindowAttribute( ie, Dwmapi.DWMWA_CLOAKED, flagsRef, 8 );
+            if( result.longValue( ) != 0x80070057 && ( result.longValue( ) != 0 || flagsRef.getValue( ) != 0 ) ) // unsupported on 7 so skip the check
+                return IEResult.NOT_IE;
+            
+            //int flags = User32.INSTANCE.GetWindowLongW( ie, User32.GWL_STYLE );
+            //if( ( flags & User32.WS_MAXIMIZE ) != 0 )
+                //return IEResult.INVALID;
+            
+            if( User32.INSTANCE.IsZoomed( ie ) != 0 )
+                return IEResult.INVALID;
+
+            if( isIE( ie ) && ( User32.INSTANCE.IsIconic( ie ) == 0 ) )
+            {
+                Rectangle ieRect = getIERect( ie );
+                if( ieRect.intersects( getScreenRect( ) ) )
+                    return IEResult.IE;
+                else
+                    return IEResult.IE_OUT_OF_BOUNDS;
+            }
+        }
+        
+        return IEResult.NOT_IE;
+    }
 
     private static Pointer findActiveIE()
     {
-
-        Pointer ie = User32.INSTANCE.GetWindow( User32.INSTANCE.GetForegroundWindow(), User32.GW_HWNDFIRST );
-
-        while( User32.INSTANCE.IsWindow( ie ) != 0 )
+        activeIEobject = null;
+        
+        User32.INSTANCE.EnumWindows( new User32.WNDENUMPROC( )
         {
-
-            if( User32.INSTANCE.IsWindowVisible( ie ) != 0 )
+            @Override
+            public boolean callback( Pointer ie, Pointer data )
             {
-                if( ( User32.INSTANCE.GetWindowLongW( ie, User32.GWL_STYLE ) & User32.WS_MAXIMIZE ) != 0 )
+                switch( isViableIE( ie ) )
                 {
-                    return null;
-                }
+                    case IE:
+                        activeIEobject = ie;
+                        return false;
 
-                if( isIE( ie ) && ( User32.INSTANCE.IsIconic( ie ) == 0 ) )
-                {
-                    break;
+                    case IE_OUT_OF_BOUNDS:
+                    case NOT_IE: // Valid window but not interactive according to user settings
+                        return true;
+
+                    case INVALID: // Something invalid is the foreground object
+                    default:
+                        activeIEobject = null;
+                        return false;
                 }
             }
-
-            ie = User32.INSTANCE.GetWindow( ie, User32.GW_HWNDNEXT );
-
-        }
-
-        if( User32.INSTANCE.IsWindow( ie ) == 0 )
-        {
-            return null;
-        }
-
-        return ie;
+        }, null );
+        
+        return activeIEobject;
+        
+//        Pointer ie = User32.INSTANCE.GetWindow( User32.INSTANCE.GetForegroundWindow(), User32.GW_HWNDFIRST );
+//        Boolean continueFlag = true;
+//
+//        while( continueFlag && User32.INSTANCE.IsWindow( ie ) != 0 )
+//        {
+//            switch( isViableIE( ie ) )
+//            {
+//                case IE:
+//                    return ie;
+//                
+//                case IE_OUT_OF_BOUNDS:
+//                case NOT_IE: // Valid window but not interactive according to user settings
+//                    ie = User32.INSTANCE.GetWindow( ie, User32.GW_HWNDNEXT );
+//                    break;
+//                
+//                case INVALID: // Something invalid is the foreground object
+//                    continueFlag = false;
+//                    break;
+//            }
+//        }
+//
+//        return null;
     }
 
-    private static Rectangle getActiveIERect()
+    private static Rectangle getIERect( Pointer ie )
     {
-
-        final Pointer ie = findActiveIE();
-
         final RECT out = new RECT();
         User32.INSTANCE.GetWindowRect( ie, out );
         final RECT in = new RECT();
@@ -120,8 +203,7 @@ class WindowsEnvironment extends Environment
             in.right = out.right - out.left;
             in.bottom = out.bottom - out.top;
         }
-
-        return new Rectangle( out.left + in.left, out.top + in.top, in.Width(), in.Height() );
+        return new Rectangle( out.left + in.left, out.top + in.top, in.Width( ), in.Height( ) );
     }
 
     private static int getWindowRgnBox( final Pointer window, final RECT rect )
@@ -168,38 +250,34 @@ class WindowsEnvironment extends Environment
         return true;
     }
 
-    private static void restoreAllIEs()
+    private static void restoreAllIEs( )
     {
-
-        final RECT workArea = new RECT();
-        User32.INSTANCE.SystemParametersInfoW( User32.SPI_GETWORKAREA, 0, workArea, 0 );
-
-        Pointer ie = User32.INSTANCE.GetWindow( User32.INSTANCE.GetForegroundWindow(), User32.GW_HWNDFIRST );
-
-        while( User32.INSTANCE.IsWindow( ie ) != 0 )
+        User32.INSTANCE.EnumWindows( new User32.WNDENUMPROC( )
         {
-            if( isIE( ie ) )
+            int offset = 25;
+            
+            @Override
+            public boolean callback( Pointer ie, Pointer data )
             {
-
-                final RECT rect = new RECT();
-                User32.INSTANCE.GetWindowRect( ie, rect );
-                if( ( rect.right <= workArea.left + 100 ) || ( rect.bottom <= workArea.top + 100 )
-                        || ( rect.left >= workArea.right - 100 ) || ( rect.top >= workArea.bottom - 100 ) )
+                IEResult result = isViableIE( ie );
+                if( result == IEResult.IE_OUT_OF_BOUNDS )
                 {
-
-                    rect.OffsetRect( workArea.left + 100 - rect.left, workArea.top + 100 - rect.top );
-                    User32.INSTANCE.MoveWindow( ie, rect.left, rect.top, rect.Width(), rect.Height(), 1 );
+                    final RECT workArea = new RECT( );
+                    User32.INSTANCE.SystemParametersInfoW( User32.SPI_GETWORKAREA, 0, workArea, 0 );
+                    final RECT rect = new RECT( );
+                    User32.INSTANCE.GetWindowRect( ie, rect );
+                    
+                    rect.OffsetRect( workArea.left + offset - rect.left, workArea.top + offset - rect.top );
+                    User32.INSTANCE.MoveWindow( ie, rect.left, rect.top, rect.Width( ), rect.Height( ), 1 );
                     User32.INSTANCE.BringWindowToTop( ie );
+                    
+                    offset += 25;
                 }
-
-                break;
+                
+                return true;
             }
-
-            ie = User32.INSTANCE.GetWindow( ie, User32.GW_HWNDNEXT );
-        }
+        }, null );
     }
-    public static Area workArea = new Area();
-    public static Area activeIE = new Area();
 
     @Override
     public void tick()
@@ -207,10 +285,14 @@ class WindowsEnvironment extends Environment
         super.tick();
         workArea.set( getWorkAreaRect() );
 
-        final Rectangle ieRect = getActiveIERect();
+        final Rectangle ieRect = getIERect( findActiveIE( ) );
         activeIE.setVisible( ( ieRect != null ) && ieRect.intersects( getScreen().toRectangle() ) );
         activeIE.set( ieRect == null ? new Rectangle( -1, -1, 0, 0 ) : ieRect );
+    }
 
+    @Override
+    public void dispose( )
+    {
     }
 
     @Override
@@ -236,11 +318,60 @@ class WindowsEnvironment extends Environment
     {
         return activeIE;
     }
+    
+    @Override
+    public String getActiveIETitle( )
+    {
+        final Pointer ie = findActiveIE( );
+        
+        final char[] title = new char[ 1024 ];
+
+        final int titleLength = User32.INSTANCE.GetWindowTextW( ie, title, 1024 );
+        
+        return new String( title, 0, titleLength );
+    }
+    
+    private static Rectangle getWorkAreaRect( )
+    {
+        final RECT rect = new RECT();
+        User32.INSTANCE.SystemParametersInfoW( User32.SPI_GETWORKAREA, 0, rect, 0 );
+        return new Rectangle( rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top );
+    }
 
     @Override
-    public void refreshCache()
+    public void refreshCache( )
     {
         ieCache.clear( ); // will be repopulated next isIE call
         windowTitles = null;
+        windowTitlesBlacklist = null;
     }
+    
+//    private void dumpWindowInformation( )
+//    {
+//        final StringBuilder text = new StringBuilder( );
+//        final char[] title = new char[ 1024 ];
+//        User32.INSTANCE.EnumWindows( new User32.WNDENUMPROC( )
+//        {
+//            @Override
+//            public boolean callback( Pointer ie, Pointer data )
+//            {
+//                int titleLength = User32.INSTANCE.GetWindowTextW( ie, title, 1024 );
+//
+//                String ieTitle = new String( title, 0, titleLength );
+//
+//                text.append( ieTitle ).append( " " ).append( isViableIE( ie ) ).append( "\r\n" );
+//                return true;
+//            }
+//        }, null );
+//        
+//        try
+//        {
+//            PrintWriter out = new PrintWriter( "window-debug-information.txt" );
+//            out.println( text.toString( ) );
+//            out.close( );
+//        }
+//        catch( Exception e )
+//        {
+//        }
+//    }
 }

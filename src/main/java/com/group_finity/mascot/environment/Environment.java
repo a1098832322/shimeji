@@ -14,154 +14,165 @@ import java.util.Map;
  * Original Author: Yuki Yamada of Group Finity (http://www.group-finity.com/Shimeji/)
  * Currently developed by Shimeji-ee Group.
  */
+public abstract class Environment
+{
+    protected abstract Area getWorkArea( );
 
-public abstract class Environment {
+    public abstract Area getActiveIE( );
+        
+    public abstract String getActiveIETitle( );
 
-	protected abstract Area getWorkArea();
+    public abstract void moveActiveIE( final Point point );
 
-	public abstract Area getActiveIE();
-
-	public abstract void moveActiveIE(final Point point);
-
-	public abstract void restoreIE();
+    public abstract void restoreIE( );
     
     public abstract void refreshCache( );
+    
+    public abstract void dispose( );
 
-	private static Rectangle screenRect = new Rectangle(new Point(0, 0), Toolkit.getDefaultToolkit().getScreenSize());
+    protected static Rectangle screenRect = new Rectangle( new Point(0, 0), Toolkit.getDefaultToolkit( ).getScreenSize( ) );
 
-	private static Map<String, Rectangle> screenRects = new HashMap<String, Rectangle>();
+    protected static Map<String, Rectangle> screenRects = new HashMap<String, Rectangle>( );
+    
+    private static final Thread thread = new Thread( )
+    {
+        @Override
+        public void run( )
+        {
+            try
+            {
+                while( true )
+                {
+                    updateScreenRect( );
+                    Thread.sleep( 5000 );
+                }
+            }
+            catch( final InterruptedException e )
+            {
+            }
+        }
+    };
 
-	static {
+    public ComplexArea complexScreen = new ComplexArea( );
 
-		final Thread thread = new Thread() {
-			@Override
-			public void run() {
-				try {
-					for (;;) {
-						updateScreenRect();
-						Thread.sleep(5000);
-					}
-				} catch (final InterruptedException e) {
-				}
-			}
+    public Area screen = new Area( );
 
-		};
-		thread.setDaemon(true);
-		thread.setPriority(Thread.MIN_PRIORITY);
-		thread.start();
-	}
+    public Location cursor = new Location( );
 
-	private static void updateScreenRect() {
+    private static void updateScreenRect( )
+    {
+        Rectangle virtualBounds = new Rectangle( );
 
-		Rectangle virtualBounds = new Rectangle();
+        Map<String, Rectangle> screenRects = new HashMap<String, Rectangle>( );
 
-		Map<String, Rectangle> screenRects = new HashMap<String, Rectangle>();
+        final GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment( );
+        final GraphicsDevice[ ] gs = ge.getScreenDevices( );
 
-		final GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-		final GraphicsDevice[] gs = ge.getScreenDevices();
+        for( int j = 0; j < gs.length; j++ )
+        {
+            final GraphicsDevice gd = gs[ j ];
+            screenRects.put( gd.getIDstring( ), gd.getDefaultConfiguration( ).getBounds( ) );
+            virtualBounds = virtualBounds.union( gd.getDefaultConfiguration( ).getBounds( ) );
+        }
 
-		for (int j = 0; j < gs.length; j++) {
-			final GraphicsDevice gd = gs[j];
-			screenRects.put(gd.getIDstring(), gd.getDefaultConfiguration().getBounds());
-			virtualBounds = virtualBounds.union(gd.getDefaultConfiguration().getBounds());
-		}
+        Environment.screenRects = screenRects;
 
-		Environment.screenRects = screenRects;
+        screenRect = virtualBounds;
+    }
 
-		screenRect = virtualBounds;
-	}
+    protected static Rectangle getScreenRect( )
+    {
+        return screenRect;
+    }
 
-	private static Rectangle getScreenRect() {
-		return screenRect;
-	}
+    private static Point getCursorPos( )
+    {
+        java.awt.PointerInfo info = MouseInfo.getPointerInfo( );
+        return info != null ? info.getLocation( ) : new Point( 0, 0 );
+    }
 
-	private static Point getCursorPos() {
-		return MouseInfo.getPointerInfo().getLocation();
-	}
+    public void init( )
+    {
+        if( !thread.isAlive( ) )
+        {
+            thread.setDaemon( true );
+            thread.setPriority( Thread.MIN_PRIORITY );
+            thread.start( );
+        }
 
-	public ComplexArea complexScreen = new ComplexArea();
+        tick( );
+    }
 
-	public Area screen = new Area();
+    public void tick( )
+    {
+        screen.set( Environment.getScreenRect( ) );
+        complexScreen.set( screenRects );
+        cursor.set( Environment.getCursorPos( ) );
+    }
 
-	public Location cursor = new Location();
+    public Area getScreen( )
+    {
+        return screen;
+    }
 
-	protected Environment() {
-		tick();
-	}
+    public Collection<Area> getScreens( )
+    {
+        return complexScreen.getAreas( );
+    }
 
-	public void tick() {
-		this.screen.set(Environment.getScreenRect());
-		this.complexScreen.set(screenRects);
-		this.cursor.set(Environment.getCursorPos());
-	}
+    public ComplexArea getComplexScreen( )
+    {
+        return complexScreen;
+    }
 
-	public Area getScreen() {
-		return screen;
-	}
+    public Location getCursor( )
+    {
+        return cursor;
+    }
 
-	public Collection<Area> getScreens() {
-		return complexScreen.getAreas();
-	}
+    public boolean isScreenTopBottom( final Point location )
+    {
+        int count = 0;
 
-	public ComplexArea getComplexScreen() {
-		return complexScreen;
-	}
+        for( Area area: getScreens( ) )
+        {
+            if( area.getTopBorder( ).isOn( location ) )
+                ++count;
+            if( area.getBottomBorder( ).isOn( location ) )
+                ++count;
+        }
 
-	public Location getCursor() {
-		return cursor;
-	}
+        if( count==0 )
+        {
+            if( getWorkArea( ).getTopBorder( ).isOn( location ) )
+                return true;
+            if( getWorkArea( ).getBottomBorder( ).isOn( location ) )
+                return true;
+        }
 
-	public boolean isScreenTopBottom(final Point location) {
+        return count == 1;
+    }
 
+    public boolean isScreenLeftRight( final Point location )
+    {
+        int count = 0;
 
-		int count = 0;
+        for( Area area: getScreens( ) )
+        {   
+            if( area.getLeftBorder( ).isOn( location ) )
+                ++count;
+            if( area.getRightBorder( ).isOn( location ) )
+                ++count;
+        }
 
-		for( Area area: getScreens() ) {
-			if ( area.getTopBorder().isOn(location)) {
-				++count;
-			}
-			if ( area.getBottomBorder().isOn(location)) {
-				++count;
-			}
-		}
+        if( count == 0 )
+        {
+            if( getWorkArea( ).getLeftBorder( ).isOn( location ) )
+                return true;
+            if( getWorkArea( ).getRightBorder( ).isOn( location ) )
+                return true;
+        }
 
-
-		if ( count==0 ) {
-			if ( getWorkArea().getTopBorder().isOn(location) ) {
-				return true;
-			}
-			if ( getWorkArea().getBottomBorder().isOn(location) ) {
-				return true;
-			}
-		}
-
-		return count==1;
-	}
-
-	public boolean isScreenLeftRight(final Point location) {
-
-
-		int count = 0;
-
-		for( Area area: getScreens() ) {
-			if ( area.getLeftBorder().isOn(location)) {
-				++count;
-			}
-			if ( area.getRightBorder().isOn(location)) {
-				++count;
-			}
-		}
-
-		if ( count==0 ) {
-			if ( getWorkArea().getLeftBorder().isOn(location) ) {
-				return true;
-			}
-			if ( getWorkArea().getRightBorder().isOn(location) ) {
-				return true;
-			}
-		}
-
-		return count==1;
-	}
-
+        return count == 1;
+    }
 }

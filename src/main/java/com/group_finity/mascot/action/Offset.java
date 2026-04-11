@@ -1,7 +1,8 @@
 package com.group_finity.mascot.action;
 
 import java.awt.Point;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.group_finity.mascot.exception.VariableException;
 import com.group_finity.mascot.script.VariableMap;
@@ -12,7 +13,7 @@ import com.group_finity.mascot.script.VariableMap;
  */
 public class Offset extends InstantAction {
 
-	private static final Logger log = Logger.getLogger(Offset.class.getName());
+	private static final Logger log = LoggerFactory.getLogger(Offset.class);
 
 	public static final String PARAMETER_OFFSETX = "X";
 
@@ -22,8 +23,9 @@ public class Offset extends InstantAction {
 
 	private static final int DEFAULT_OFFSETY = 0;
 
-	public Offset(final VariableMap params) {
-		super(params);
+	public Offset( java.util.ResourceBundle schema, final VariableMap params )
+        {
+            super( schema, params );
 	}
 
 	@Override
@@ -32,12 +34,13 @@ public class Offset extends InstantAction {
 				new Point(getMascot().getAnchor().x + getOffsetX(), getMascot().getAnchor().y + getOffsetY()));
 	}
 
-	private int getOffsetY() throws VariableException {
-		return eval(PARAMETER_OFFSETY, Number.class, DEFAULT_OFFSETY).intValue();
-	}
-
-	private int getOffsetX() throws VariableException {
-		return eval(PARAMETER_OFFSETX, Number.class, DEFAULT_OFFSETX).intValue();
-	}
-
+    private int getOffsetX( ) throws VariableException
+    {
+        return eval( getSchema( ).getString( PARAMETER_OFFSETX ), Number.class, DEFAULT_OFFSETX ).intValue( );
+    }
+    
+    private int getOffsetY( ) throws VariableException
+    {
+        return eval( getSchema( ).getString( PARAMETER_OFFSETY ), Number.class, DEFAULT_OFFSETY ).intValue( );
+    }
 }

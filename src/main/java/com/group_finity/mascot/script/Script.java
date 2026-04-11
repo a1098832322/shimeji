@@ -4,8 +4,8 @@ import com.group_finity.mascot.Main;
 import javax.script.Compilable;
 import javax.script.CompiledScript;
 import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
 
 import com.group_finity.mascot.exception.VariableException;
 
@@ -16,10 +16,8 @@ import com.group_finity.mascot.exception.VariableException;
 
 public class Script extends Variable {
 
-	private static final ScriptEngineManager manager = new ScriptEngineManager();
-
-	private static final ScriptEngine engine = manager.getEngineByMimeType("text/javascript");
-
+	private static final ScriptEngine engine = new NashornScriptEngineFactory( ).getScriptEngine( new ScriptFilter( ) );
+        
 	private final String source;
 	
 	private final boolean clearAtInitFrame;
@@ -29,6 +27,7 @@ public class Script extends Variable {
 	private Object value;
 	
 	public Script(final String source, final boolean clearAtInitFrame)  throws VariableException {
+            
 		this.source = source;
 		this.clearAtInitFrame = clearAtInitFrame;
 		try {

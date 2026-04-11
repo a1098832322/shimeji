@@ -1,7 +1,7 @@
 package com.group_finity.mascot.win;
 
 import java.awt.Graphics;
-
+import java.awt.Component;
 import javax.swing.JWindow;
 
 import com.group_finity.mascot.image.NativeImage;
@@ -27,11 +27,9 @@ import com.sun.jna.Pointer;
 class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 
 	private static final long serialVersionUID = 1L;
-    
-    private boolean alwaysOnTop = false;
 	
 	@Override
-	public JWindow asJWindow() {
+	public Component asComponent() {
 		return this;
 	}
 
@@ -41,6 +39,8 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 	 * @param alpha concentrations shown. 0 = not at all, 255 = full display.
 	 */
 	private void paint(final Pointer imageHandle, final int alpha) {
+            
+            //this.setSize( WIDTH, HEIGHT );
 		
 		final Pointer hWnd = Native.getComponentPointer(this);
 		
@@ -52,7 +52,7 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 			}
 
 			// Create a DC source of the image
-			final Pointer clientDC= User32.INSTANCE.GetDC(hWnd);
+			final Pointer clientDC = User32.INSTANCE.GetDC(hWnd);
 			final Pointer memDC = Gdi32.INSTANCE.CreateCompatibleDC(clientDC);
 			final Pointer oldBmp = Gdi32.INSTANCE.SelectObject(memDC, imageHandle );
 			
@@ -83,14 +83,14 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 
 			// Replace the bitmap you
 			Gdi32.INSTANCE.SelectObject(memDC, oldBmp);
+			Gdi32.INSTANCE.DeleteDC(memDC);
 
             // Bring to front
-            if( alwaysOnTop )
-            {
-                User32.INSTANCE.BringWindowToTop( hWnd );
-            }
+//            if( alwaysOnTop )
+//            {
+//                User32.INSTANCE.BringWindowToTop( hWnd );
+//            }
             
-			Gdi32.INSTANCE.DeleteDC(memDC);
 		}
 	}
 
@@ -133,14 +133,8 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 		this.alpha = alpha;
 	}
 
-    @Override
+        @Override
 	public void updateImage() {
 		repaint();
 	}
-    
-    @Override
-    public void setStayOnTop( boolean newAlwaysOnTop )
-    {
-        alwaysOnTop = newAlwaysOnTop;
-    }
 }
