@@ -14,7 +14,7 @@ import com.wishes.fix.OriginEngineFix;
 import com.wishes.update.DownloadDialog;
 import com.wishes.utils.FormatUtils;
 import com.wishes.utils.UpdateChecker;
-import org.jb2011.lnf.beautyeye.BeautyEyeLNFHelper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -126,30 +126,19 @@ public class Main {
             exit();
         }
 
-        //使用beauty eye皮肤包替代NimRODLookAndFeel皮肤包
+        // 设置 LookAndFeel
         try {
-            // 检测操作系统，Mac 不使用 BeautyEye
-            String osName = System.getProperty("os.name").toLowerCase();
-            if (osName.contains("mac") || osName.contains("darwin")) {
-                // Mac 系统使用系统默认 LookAndFeel
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-                log.info("Using system LookAndFeel for Mac");
-            } else {
-                // 其他系统使用 BeautyEye
-                /* 设置皮肤属性 */
-                BeautyEyeLNFHelper.frameBorderStyle = BeautyEyeLNFHelper.FrameBorderStyle.generalNoTranslucencyShadow;
-                UIManager.put("RootPane.setupButtonVisible", false);
-                BeautyEyeLNFHelper.translucencyAtFrameInactive = false;// 是否在窗口失焦时变成半透明状态
-                org.jb2011.lnf.beautyeye.BeautyEyeLNFHelper.launchBeautyEyeLNF();// 加载皮肤
-                log.info("Using BeautyEye LookAndFeel");
-            }
+            // 使用系统默认 LookAndFeel，确保最佳兼容性
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            log.info("Using system LookAndFeel: {}", UIManager.getLookAndFeel().getClass().getName());
         } catch (Exception e) {
-            log.error("Look & Feel unsupported, using default.", e);
-            // 如果失败，使用默认 LookAndFeel
+            log.warn("Failed to set system LookAndFeel, using cross-platform default. Error: {}", e.getMessage());
+            // 如果失败，使用跨平台默认 LookAndFeel
             try {
                 UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+                log.info("Using cross-platform LookAndFeel: {}", UIManager.getLookAndFeel().getClass().getName());
             } catch (Exception ex) {
-                log.error("Failed to set default LookAndFeel", ex);
+                log.error("Failed to set any LookAndFeel", ex);
             }
         }
 
