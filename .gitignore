@@ -25,3 +25,4 @@ hs_err_pid*
 /logs/
 /ShimejieeLog0.log.lck
 /target/
+.DS_Store
