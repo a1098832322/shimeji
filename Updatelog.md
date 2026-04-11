@@ -26,6 +26,8 @@
 - 🔧 修复 JNA Structure 字段顺序缺失导致的 Windows 平台崩溃问题（BITMAPINFOHEADER、BITMAP、RECT、POINT、SIZE、BLENDFUNCTION、MONITORINFO）
 - 🔧 修复 ImageSetChooser 在 img 目录不存在或无法访问时的空指针异常，增加友好的错误提示
 - 🔧 修复 Windows 平台桌宠窗口无法显示的问题，增加窗口初始化代码和空值检查
+- 🔧 **修复皮肤资源加载失败问题** - 解决选择新皮肤后报错"无法加载图像"的问题，支持开发环境和生产环境的动态路径识别
+- 🔧 **修复配置加载空指针异常** - 增加配置 null 检查，避免配置加载失败时的崩溃
 
 ---
 
