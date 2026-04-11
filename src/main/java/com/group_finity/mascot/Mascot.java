@@ -214,7 +214,8 @@ public class Mascot
 
     private void mouseReleased(final MouseEvent event)
     {
-        if( event.isPopupTrigger( ) )
+        // macOS 上 isPopupTrigger() 不会触发，需要检查右键按钮
+        if( event.isPopupTrigger( ) || event.getButton( ) == MouseEvent.BUTTON3 )
         {
             SwingUtilities.invokeLater( new Runnable( )
             {
