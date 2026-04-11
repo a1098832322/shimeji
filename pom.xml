@@ -20,6 +20,14 @@
 
 
     <build>
+        <!-- 启用资源过滤,支持 ${project.version} 等占位符 -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

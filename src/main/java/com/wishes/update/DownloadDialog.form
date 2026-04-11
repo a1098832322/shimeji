@@ -63,7 +63,7 @@
           <component id="b2c74" class="javax.swing.JLabel" binding="versionInfo">
             <constraints border-constraint="North"/>
             <properties>
-              <text value="查询中...请稍后..."/>
+              <text value="检测更新中...请稍后..."/>
             </properties>
           </component>
           <component id="8d06a" class="javax.swing.JLabel" binding="message">
@@ -75,7 +75,7 @@
           <component id="f9478" class="javax.swing.JLabel" binding="licence">
             <constraints border-constraint="South"/>
             <properties>
-              <text value="Label"/>
+              <text value=""/>
             </properties>
           </component>
         </children>

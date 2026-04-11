@@ -6,7 +6,7 @@
 **📅 发布日期**: 2026年4月11日
 
 ### 🚀 新特性
-- ✅ **支持 macOS 26** - 完美兼容最新 macOS 系统
+- ✅ **支持 MacOS 26** - 完美兼容最新 MacOS 系统
 - 🎨 **统一日志框架** - 迁移至 Logback，提供更稳定的日志输出
 - 📂 **日志分级管理** - 日志按级别分别输出到 `logs/info.log`、`logs/warn.log`、`logs/error.log`
 - 🔍 **可选调试窗口** - 通过 `-Ddebugwindow=true` JVM 参数控制是否自动打开 DebugWindow，方便开发和调试
@@ -34,6 +34,7 @@
 - 🔧 修复 WindowsEnvironment DPI 缩放问题
 - 🔧 修复高 DPI 下动画不生效的问题
 - 🔧 修复高 DPI 下，系统底托盘菜单弹出位置不正确的问题
+- 🔧 修复 MacOS 下无法显示菜单的问题
 ---
 
 ## 📌 1.0.3 - b1

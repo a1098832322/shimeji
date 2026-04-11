@@ -11,14 +11,14 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 public class DownloadDialog extends JDialog {
     /**
      * log
      */
-    private Logger logger = LoggerFactory.getLogger(DownloadDialog.class);
-
-    private String downloadURL = "";
+    private static final Logger logger = LoggerFactory.getLogger(DownloadDialog.class);
 
     private JPanel contentPane;
     private JButton buttonOK;
@@ -56,11 +56,22 @@ public class DownloadDialog extends JDialog {
         buttonOK.setEnabled(false);
 
         //显示前从网络查询数据
-        new Thread(() -> queryUpdateInfo()).start();
+        new Thread(this::queryUpdateInfo).start();
 
         //show dialog
         this.pack();
         this.setVisible(true);
+        
+        // 为contentPane添加鼠标监听，确保鼠标移到非超链接区域时恢复默认光标
+        contentPane.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                Component component = SwingUtilities.getDeepestComponentAt(contentPane, e.getX(), e.getY());
+                if (component != message && component != licence) {
+                    contentPane.setCursor(Cursor.getDefaultCursor());
+                }
+            }
+        });
     }
 
     /**
@@ -77,7 +88,6 @@ public class DownloadDialog extends JDialog {
                 versionInfo.setText("检测更新： " + v.getVersion());
                 message.setText("<html><body>更新内容： <br><br>" + v.getWhatNew()
                         .replaceAll("\n", "<br>") + "</body></html>");
-                this.downloadURL = v.getDownloadURL();
             } else {
                 this.setTitle("关于");
                 //无更新
@@ -90,31 +100,75 @@ public class DownloadDialog extends JDialog {
                 message.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mouseClicked(MouseEvent e) {
-                        try {
-                            Runtime.getRuntime().exec("cmd.exe /c start " + "https://github.com/a1098832322/shimeji");
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                        }
+                        openURL("https://github.com/a1098832322/shimeji");
+                    }
+
+                    @Override
+                    public void mouseEntered(MouseEvent e) {
+                        message.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                    }
+
+                    @Override
+                    public void mouseExited(MouseEvent e) {
+                        message.setCursor(Cursor.getDefaultCursor());
                     }
                 });
             }
 
             //许可证明
-            licence.setText("<html><body>开源许可：&nbsp;<a href=''>Apache 2.0</a>" +
+            licence.setText("<html><body>开源许可：&nbsp;<a href=''>GPL v3</a>" +
                     "</body></html>");
             //添加鼠标点击跳转事件
             licence.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    try {
-                        Runtime.getRuntime().exec("cmd.exe /c start " + "http://www.apache.org/licenses/LICENSE-2.0.html");
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
+                    openURL("https://www.gnu.org/licenses/gpl-3.0.html");
+                }
+
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    licence.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    licence.setCursor(Cursor.getDefaultCursor());
                 }
             });
         } catch (IOException e) {
             logger.error("显示检测更新弹窗失败！", e);
+        }
+    }
+
+    /**
+     * 跨平台打开URL(支持Windows、Mac、Linux)
+     *
+     * @param url 要打开的网址
+     */
+    private void openURL(String url) {
+        try {
+            Desktop desktop = Desktop.isDesktopSupported() ? Desktop.getDesktop() : null;
+            if (desktop != null && desktop.isSupported(Desktop.Action.BROWSE)) {
+                desktop.browse(new URI(url));
+            } else {
+                logger.error("无法打开浏览器,请手动访问: {}", url);
+                JOptionPane.showMessageDialog(this,
+                        "无法自动打开浏览器,请手动访问:\n" + url,
+                        "提示",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+        } catch (URISyntaxException | IOException e) {
+            logger.error("打开URL失败: {}", url, e);
+            JOptionPane.showMessageDialog(this,
+                    "打开链接失败: " + e.getMessage(),
+                    "错误",
+                    JOptionPane.ERROR_MESSAGE);
+        } catch (UnsupportedOperationException e) {
+            logger.error("系统不支持打开浏览器: {}", url, e);
+            JOptionPane.showMessageDialog(this,
+                    "系统不支持自动打开浏览器,请手动访问:\n" + url,
+                    "提示",
+                    JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -127,7 +181,6 @@ public class DownloadDialog extends JDialog {
             try {
                 UpdateChecker.download(window);
             } catch (IOException e) {
-                e.printStackTrace();
                 logger.error("下载失败！", e);
             }
 

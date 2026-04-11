@@ -2,6 +2,10 @@ package com.wishes.constant;
 
 import lombok.Getter;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
 /**
  * @Author:郑龙
  * @Date:2018-11-07 16:45
@@ -24,9 +28,26 @@ public class Constant {
      */
     public static final boolean autoOpenDebugWindow = Boolean.parseBoolean(System.getProperty("debugwindow", "false"));
     /**
-     * 当前版本号
+     * 当前版本号(从 pom.xml 中自动获取)
      */
-    public static final String CURRENT_VERSION = "1.0.3-beta2";
+    public static final String CURRENT_VERSION = loadVersion();
+
+    /**
+     * 从 version.properties 文件中加载版本号
+     */
+    private static String loadVersion() {
+        Properties props = new Properties();
+        try (InputStream is = Constant.class.getClassLoader().getResourceAsStream("version.properties")) {
+            if (is != null) {
+                props.load(is);
+                return props.getProperty("app.version", "unknown");
+            }
+        } catch (IOException e) {
+            // 如果读取失败,返回默认值
+            System.err.println("警告: 无法加载版本信息 - " + e.getMessage());
+        }
+        return "unknown";
+    }
 
     /**
      * 更新类型
