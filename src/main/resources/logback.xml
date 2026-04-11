@@ -77,9 +77,20 @@
     </appender>
 
     <!-- 根日志级别配置 -->
-    <root level="INFO">
+    <root level="WARN">
         <appender-ref ref="INFO_FILE"/>
         <appender-ref ref="WARN_FILE"/>
         <appender-ref ref="ERROR_FILE"/>
     </root>
+    
+    <!-- 项目代码日志级别 - 只记录 INFO 及以上 -->
+    <logger name="com.group_finity" level="INFO"/>
+    <logger name="com.wishes" level="INFO"/>
+    
+    <!-- 抑制第三方库的垃圾日志 -->
+    <logger name="ch.qos.logback" level="ERROR"/>
+    <logger name="org.slf4j" level="WARN"/>
+    <logger name="com.sun.jna" level="WARN"/>
+    <logger name="javax.swing" level="WARN"/>
+    <logger name="java.awt" level="WARN"/>
 </configuration>

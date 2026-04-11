@@ -108,12 +108,6 @@
 
         <!-- 网络依赖jar -->
 
-        <!-- https://mvnrepository.com/artifact/com.bulucat/BeautyEye -->
-        <dependency>
-            <groupId>com.bulucat</groupId>
-            <artifactId>BeautyEye</artifactId>
-            <version>1.0.0</version>
-        </dependency>
         <!-- Logback + SLF4J - 统一的日志框架 -->
         <dependency>
             <groupId>ch.qos.logback</groupId>

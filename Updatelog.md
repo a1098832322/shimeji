@@ -16,11 +16,16 @@
 - 🧹 **代码清理** - 移除废弃的 log4j.xml 配置及相关无用代码
 - 📦 **依赖更新** - 升级核心依赖至最新稳定版本
 - 📜 **许可证变更** - 从 Apache License 2.0 更改为 GNU GPL v3.0
+- 🎨 **UI 框架简化** - 移除 BeautyEye 依赖，统一使用系统默认 LookAndFeel，提升兼容性和稳定性
+- 📝 **日志优化** - 抑制控制台垃圾日志输出，降低根日志级别为 WARN，项目代码保持 INFO 级别
 
 ### 🐛 Bug 修复
 - 🔧 修复日志占位符格式问题（`{0}` → `{}`）
 - 🔧 修复日志方法名解析错误（`%PARSER_ERROR[method]`）
 - 🔧 优化调试日志级别，减少 INFO 日志冗余
+- 🔧 修复 JNA Structure 字段顺序缺失导致的 Windows 平台崩溃问题（BITMAPINFOHEADER、BITMAP、RECT、POINT、SIZE、BLENDFUNCTION、MONITORINFO）
+- 🔧 修复 ImageSetChooser 在 img 目录不存在或无法访问时的空指针异常，增加友好的错误提示
+- 🔧 修复 Windows 平台桌宠窗口无法显示的问题，增加窗口初始化代码和空值检查
 
 ---
 

@@ -28,6 +28,15 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 
 	private static final long serialVersionUID = 1L;
 	
+	/**
+	 * 构造函数 - 初始化窗口
+	 */
+	public WindowsTranslucentWindow() {
+		super();
+		// 确保窗口可以显示
+		setAlwaysOnTop(true);
+	}
+	
 	@Override
 	public Component asComponent() {
 		return this;
@@ -43,6 +52,10 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
             //this.setSize( WIDTH, HEIGHT );
 		
 		final Pointer hWnd = Native.getComponentPointer(this);
+		
+		if ( hWnd == null ) {
+			return;
+		}
 		
 		if ( User32.INSTANCE.IsWindow(hWnd)!=0 ) {
 			
@@ -61,6 +74,13 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 			// Destination Area
 			final RECT windowRect = new RECT();
 			User32.INSTANCE.GetWindowRect(hWnd, windowRect);
+			
+			// 检查窗口大小是否有效
+			if ( windowRect.Width() <= 0 || windowRect.Height() <= 0 ) {
+				Gdi32.INSTANCE.SelectObject(memDC, oldBmp);
+				Gdi32.INSTANCE.DeleteDC(memDC);
+				return;
+			}
 
 			// Forward
 			final BLENDFUNCTION bf = new BLENDFUNCTION();

@@ -79,6 +79,17 @@ public class ImageSetChooser extends javax.swing.JDialog
 
         String[ ] children = topDir.toFile( ).list( fileFilter );
 
+        // 检查目录是否存在或是否可访问
+        if (children == null) {
+            javax.swing.JOptionPane.showMessageDialog(this, 
+                "无法访问图片目录: " + topDir.toAbsolutePath() + "\n请确保 'img' 目录存在且可读。",
+                "错误", 
+                javax.swing.JOptionPane.ERROR_MESSAGE);
+            closeProgram = true;
+            dispose();
+            return;
+        }
+
         // Create ImageSetChooserPanels for ShimejiList
         boolean onList1 = true;	//Toggle adding between the two lists
         int row = 0;	// Current row
