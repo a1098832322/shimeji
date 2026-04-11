@@ -98,7 +98,35 @@ public class AnimationBuilder
         
         if( imageAttr != null )
         {
-            String fullPath = imageSet + imageAttr;
+            // 处理路径：去除开头的 / 或 \，然后拼接 imageSet
+            String cleanPath = imageAttr;
+            while( cleanPath.startsWith( "/" ) || cleanPath.startsWith( "\\" ) )
+            {
+                cleanPath = cleanPath.substring( 1 );
+            }
+            
+            // 根据开发/生产环境构建基础路径
+            Path basePath;
+            if( Constant.isDevEnvironment )
+            {
+                basePath = Paths.get( ".", "src", "main", "resources", "img" );
+            }
+            else
+            {
+                basePath = Paths.get( ".", "img" );
+            }
+            
+            // 如果 imageSet 是绝对路径，提取目录名
+            String imageSetName = imageSet;
+            if( imageSet.contains( ":" ) || imageSet.startsWith( File.separator ) || imageSet.startsWith( "/" ) )
+            {
+                // 提取最后一层目录名
+                Path imageSetPath = Paths.get( imageSet );
+                imageSetName = imageSetPath.getFileName( ).toString( );
+            }
+            
+            String fullPath = basePath.resolve( imageSetName + File.separator + cleanPath ).toString( );
+            
             File imageFile = new File( fullPath );
             if( imageFile.exists( ) )
             {
@@ -113,7 +141,35 @@ public class AnimationBuilder
         
         if( imageRightAttr != null )
         {
-            String fullPath = imageSet + imageRightAttr;
+            // 处理路径：去除开头的 / 或 \，然后拼接 imageSet
+            String cleanPath = imageRightAttr;
+            while( cleanPath.startsWith( "/" ) || cleanPath.startsWith( "\\" ) )
+            {
+                cleanPath = cleanPath.substring( 1 );
+            }
+            
+            // 根据开发/生产环境构建基础路径
+            Path basePath;
+            if( Constant.isDevEnvironment )
+            {
+                basePath = Paths.get( ".", "src", "main", "resources", "img" );
+            }
+            else
+            {
+                basePath = Paths.get( ".", "img" );
+            }
+            
+            // 如果 imageSet 是绝对路径，提取目录名
+            String imageSetName = imageSet;
+            if( imageSet.contains( ":" ) || imageSet.startsWith( File.separator ) || imageSet.startsWith( "/" ) )
+            {
+                // 提取最后一层目录名
+                Path imageSetPath = Paths.get( imageSet );
+                imageSetName = imageSetPath.getFileName( ).toString( );
+            }
+            
+            String fullPath = basePath.resolve( imageSetName + File.separator + cleanPath ).toString( );
+            
             File imageFile = new File( fullPath );
             if( imageFile.exists( ) )
             {
@@ -169,12 +225,31 @@ public class AnimationBuilder
         {
             try
             {
+                // 根据开发/生产环境构建基础路径
+                Path imgBasePath;
+                if( Constant.isDevEnvironment )
+                {
+                    imgBasePath = Paths.get( ".", "src", "main", "resources", "img" );
+                }
+                else
+                {
+                    imgBasePath = Paths.get( ".", "img" );
+                }
+                
+                // 如果 imageSet 是绝对路径，提取目录名
+                String imageSetName = imageSet;
+                if( imageSet.contains( ":" ) || imageSet.startsWith( File.separator ) || imageSet.startsWith( "/" ) )
+                {
+                    Path imageSetPath = Paths.get( imageSet );
+                    imageSetName = imageSetPath.getFileName( ).toString( );
+                }
+                
                 if( Paths.get( ".", "sound", soundText ).toFile( ).exists( ) )
                     soundText = Paths.get( ".", "sound", soundText ).toString( );
-                else if( Paths.get( ".", "sound", imageSet, soundText ).toFile( ).exists( ) )
-                    soundText = Paths.get( ".", "sound", imageSet, soundText ).toString( );
+                else if( Paths.get( ".", "sound", imageSetName, soundText ).toFile( ).exists( ) )
+                    soundText = Paths.get( ".", "sound", imageSetName, soundText ).toString( );
                 else
-                    soundText = Paths.get( ".", "img", imageSet, "sound", soundText ).toString( );
+                    soundText = imgBasePath.resolve( imageSetName + File.separator + "sound" + File.separator + soundText ).toString( );
 
                 SoundLoader.load( soundText, Float.parseFloat( volumeText ) );
                 soundText += Float.parseFloat( volumeText );
