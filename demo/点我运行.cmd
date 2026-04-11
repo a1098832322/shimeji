@@ -1,2 +1,2 @@
-java -jar shimeji.jar
+javaw -jar shimeji.jar
 pause

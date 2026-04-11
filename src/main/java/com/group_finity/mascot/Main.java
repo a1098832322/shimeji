@@ -746,15 +746,24 @@ public class Main {
                         form.setMinimumSize(new Dimension(width + 80, 400));
 
                         // setting location of the form
-                        form.setLocation(event.getPoint().x - form.getWidth(), event.getPoint().y - form.getHeight());
+                        // 注意：TrayIcon 的 MouseEvent.getPoint() 返回的是相对坐标，不是屏幕绝对坐标
+                        // 需要使用 MouseInfo 获取鼠标的屏幕绝对位置
+                        Point mousePoint = java.awt.MouseInfo.getPointerInfo().getLocation();
+                        
+                        // 计算表单显示位置：默认在鼠标左上方
+                        int formX = mousePoint.x - form.getWidth();
+                        int formY = mousePoint.y - form.getHeight();
+                        
+                        form.setLocation(formX, formY);
 
                         // make sure that it is on the screen if people are using exotic taskbar locations
-                        Rectangle screen = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+                        // 使用 DPIScaler 获取正确的屏幕边界（逻辑像素）
+                        Rectangle screen = com.group_finity.mascot.util.DPIScaler.getLogicalWorkAreaBounds();
                         if (form.getX() < screen.getX()) {
-                            form.setLocation(event.getPoint().x, form.getY());
+                            form.setLocation(mousePoint.x, form.getY());
                         }
                         if (form.getY() < screen.getY()) {
-                            form.setLocation(form.getX(), event.getPoint().y);
+                            form.setLocation(form.getX(), mousePoint.y);
                         }
                         form.setVisible(true);
                     } else if (event.getButton() == MouseEvent.BUTTON1) {
