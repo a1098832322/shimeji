@@ -81,6 +81,12 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 				Gdi32.INSTANCE.DeleteDC(memDC);
 				return;
 			}
+			
+			// 关键修复：使用图片的原始尺寸（物理像素），而不是窗口的缩放后尺寸
+			// 窗口尺寸是 Java 缩放后的，但图片本身没有缩放，所以需要使用 Java 的逻辑尺寸
+			java.awt.Rectangle javaBounds = getBounds();
+			int imageWidth = javaBounds.width;   // 图片原始宽度（逻辑像素 = 物理像素，因为图片没缩放）
+			int imageHeight = javaBounds.height;  // 图片原始高度
 
 			// Forward
 			final BLENDFUNCTION bf = new BLENDFUNCTION();
@@ -93,8 +99,8 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 			lt.x = windowRect.left;
 			lt.y = windowRect.top;
 			final SIZE size = new SIZE();
-			size.cx = windowRect.Width();
-			size.cy = windowRect.Height();
+			size.cx = imageWidth;
+			size.cy = imageHeight;
 			final POINT zero = new POINT();
 			User32.INSTANCE.UpdateLayeredWindow( 
 					hWnd, Pointer.NULL, 
