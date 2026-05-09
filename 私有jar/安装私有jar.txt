@@ -11,4 +11,4 @@ mvn install:install-file -Dfile=jna.jar -DgroupId=com.wishes -DartifactId=jna-or
 mvn install:install-file -Dfile=forms_rt.jar -DgroupId=com.idea -DartifactId=forms -Dversion=1.0 -Dpackaging=jar
 
 --nimrodlf.jar
-mvn install:install-file -DgroupId=com.wishes -DartifactId=nimrodlf-origin -Dversion=1.0 -Dpackaging=jar
+mvn install:install-file -Dfile=nimrodlf.jar -DgroupId=com.wishes -DartifactId=nimrodlf-origin -Dversion=1.0 -Dpackaging=jar
