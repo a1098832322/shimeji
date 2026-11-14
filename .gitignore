@@ -28,3 +28,6 @@ hs_err_pid*
 /target/
 .DS_Store
 *.iml
+
+# WorkBuddy 本地工作记忆（助手内部记录，不纳入版本库）
+/.workbuddy/
