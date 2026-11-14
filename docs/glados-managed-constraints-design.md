@@ -1,8 +1,9 @@
 # GLaDOS 托管模式下的 Shimeji 约束设计
 
-- 文档版本：v1.0
+- 文档版本：v1.1（2026-11-14 复核修订：回写实施进度、修正事实描述、加固回归测试）
 - 编写日期：2026-11-14
-- 状态：**设计方案（Shimeji 侧已实现，待真机补测增殖行为）**
+- 最后复核：2026-11-14
+- 状态：**Shimeji 侧已实现并完成复核加固；仅剩真机 GUI 端到端补测增殖行为（进度详见 §9.1）**
 - 适用范围：shimeji 仓库（`feature/glados-integration` 分支）
 - 关联文档：
   - `docs/glados-ai-integration-design.md`（GLaDOS AI 集成总设计）
@@ -78,8 +79,10 @@ final Mascot mascot = new Mascot( childType );
 action.getMascot().getManager().add( mascot );
 ```
 
-影响范围：`behaviors.xml` 之外，`MischievousBehavior.xml` 同样是 `Frequency="50"`；
-`CalmBehavior.xml` / `ProfessionalBehavior.xml` 为 `Frequency="0"`（已天然禁用）。
+影响范围（按源码逐文件核对）：`behaviors.xml` 与 `MischievousBehavior.xml` 中
+两者均为 `Frequency="50"`；`CalmBehavior.xml` 中两者为 `"0"`；
+`ProfessionalBehavior.xml` 中 **`SplitIntoTwo` 为 `"0"` 但 `PullUpShimeji` 仍为 `"50"`**，
+并非天然禁用——托管时这两个名字都必须被覆盖，不能只覆盖其中一个。
 
 **(B) 桥命令 `createMascot`**
 
@@ -101,7 +104,7 @@ action.getMascot().getManager().add( mascot );
 | 托盘「禁止增殖」菜单 | `Main.java:435-443` | 原版就有，说明关闭增殖是**被官方支持的运行态** |
 | 行为表覆盖 | `GladosBehaviors.loadInto()` | 读 `--glados-home/glados-behaviors.xml`，无则用 jar 内置 |
 | 行为按名覆盖 | `Configuration.loadBehaviors()` → `getBehaviorBuilders().put(name, builder)` | **同名后写覆盖前写** |
-| 频率 0 = 不参与随机 | `Configuration.buildNextBehavior()` | `Frequency="0"` 不累加 `totalFrequency`，永不被选中 |
+| 频率 0 = 不参与随机 | `BehaviorBuilder.isEffective()` | `Frequency="0"` 直接返回 false，连候选集都不进，永不被选中 |
 | 单角色收敛 | 桥命令 `remainOne` | 已实现，可作兜底 |
 
 **关键发现：Shimeji 原生就有一个 `Breeding` 开关。**
@@ -152,8 +155,8 @@ Shimeji 官方支持的运行态**，不是我们要发明的机制。
 | 约束 | 实现点 | 形态 |
 |---|---|---|
 | 1 更新检查 | `Main.main()` | `if (!managed)` 才起更新线程 —— **已实现** |
-| 2 托盘图标 | `Main.run()` | `if (!managed)` 才 `createTrayIcon()` —— **已实现** |
-| 3 禁止增殖 | `Main.run()` | 新增：`if (managed)` 置 `Breeding=false` —— **本轮实现** |
+| 2 禁止增殖 | `Main.run()` | 新增：`if (managed)` 置 `Breeding=false` —— **本轮实现** |
+| 3 托盘图标 | `Main.run()` | `if (!managed)` 才 `createTrayIcon()` —— **已实现** |
 
 三者都收敛在 `Main` 的托管分支里，**不需要给 `GladosOptions` 新增任何字段或静态开关**。
 这比前一版方案（新增静态 `autonomousBreedingAllowed`）更小、更贴合现有结构。
@@ -251,7 +254,8 @@ if (delegate.isPenultimateFrame() && delegate.isEnabled())
   `behaviors.xml` / `MischievousBehavior.xml` 里 `Frequency="50"` 的原始声明。
 - 显式给 `Action="Sit"`：避免 `Configuration.validate()` 对缺 `Action` 的行为报错
   （与现有 `AIIdle` 的写法一致，稳妥）。
-- `Frequency="0"` 在 `buildNextBehavior()` 中不累加 `totalFrequency`，永不被随机选中。
+- `Frequency="0"` 时 `BehaviorBuilder.isEffective()` 开头直接 `return false`，连
+  `candidates` 都进不去，因此 `buildNextBehavior()` 永不选中它（比"不累加权重"更严格）。
 
 **已核实的加载顺序**（`Main.run()`）：
 
@@ -375,6 +379,18 @@ java -jar target/shimeji-1.0.4.jar
 注：`Breed.Delegate.isEnabled()` 是包私有，测试可放在同包下，或通过
 `Main.getInstance().getProperties()` 间接断言。
 
+**复核补充（2026-11-14）**：上述 8 个用例验证的是策略语义，但都在测试类里重写了
+`applyManagedPolicy`，并未读取真实配置文件——`glados-behaviors.xml` 的两行禁频
+覆盖被误删时，测试仍会全绿。为此补了 4 个"配置契约"用例，直接读 classpath 资源、
+不触碰 `Main`/Swing（headless 安全）：
+
+1. 内置行为表含 `SplitIntoTwo` / `PullUpShimeji` 两条覆盖，`Frequency="0"` 且 `Action="Sit"`；
+2. `conf/behaviors.xml`、`MischievousBehavior.xml` 中两者仍为 `Frequency="50"`，
+   并锁定 `CalmBehavior.xml` / `ProfessionalBehavior.xml` 的真实取值（见 §2.3）；
+3. `conf/settings.properties` 不含 `Breeding` 键（不回写契约）；
+4. `Divide1` / `PullUpShimeji1` 均为 `action.Breed`，且**未设** `BornTransient=true`
+   ——否则 `isEnabled()` 会去读 `Transients` 而不是 `Breeding`，A 方案将被绕过。
+
 ### 6.4 回归：现有测试不得破坏
 
 ```bash
@@ -386,12 +402,12 @@ mvn test -DskipTests=false    # 注意：pom.xml 里硬编码了 skipTests=true
 直接 `mvn test` 会显示 "Tests are skipped" 而实际上一个测试都没跑。
 必须显式传 `-DskipTests=false` 才能执行。
 
-当前基线（本方案实现后实测）：
+当前基线（复核补充后实测）：
 
 ```
 Tests run: 20, Failures: 0, Errors: 0  -- GladosBridgeTest
-Tests run:  8, Failures: 0, Errors: 0  -- GladosManagedConstraintsTest
-Tests run: 28, Failures: 0, Errors: 0
+Tests run: 12, Failures: 0, Errors: 0  -- GladosManagedConstraintsTest
+Tests run: 32, Failures: 0, Errors: 0
 BUILD SUCCESS
 ```
 
@@ -411,7 +427,7 @@ BUILD SUCCESS
 | 受控创建 | ✅ 托管下 `createMascot` 后 `count` 1→2 |
 | 受控收敛 | ✅ `remainOne` 后 `count` 2→1 |
 | 托管静置观察 | ✅ 90 秒内 `count` 恒为 1，且行为正常流转（StandUp→SitDown→RunAlongWorkAreaFloor→HoldOntoWall） |
-| 单元测试 | ✅ 28 项全通过（含新增 8 项） |
+| 单元测试 | ✅ 28 项全通过（当时新增 8 项；复核后为 32 项，见 §6.4） |
 
 ### 未能在本机完整实测的部分（需真机补测）
 
@@ -442,16 +458,18 @@ BUILD SUCCESS
 |---|---|---|---|
 | `src/main/java/com/group_finity/mascot/Main.java` | 修改（+6 行） | `run()` 中 properties 加载后，托管时置 `Breeding=false`（仅内存） | ✅ 已实现 |
 | `src/main/resources/glados-behaviors.xml` | 修改（+13 行） | 追加 `SplitIntoTwo` / `PullUpShimeji`，`Frequency="0"` | ✅ 已实现 |
-| `src/test/.../GladosManagedConstraintsTest.java` | 新增（8 用例） | 托管/非托管分支与 `Breeding` 语义 | ✅ 已实现，全通过 |
-| `docs/glados-managed-constraints-design.md` | 新增 | 本文档 | ✅ 已实现 |
+| `src/test/.../GladosManagedConstraintsTest.java` | 新增（8 用例）+ 复核补 4 用例 | 托管/非托管分支、`Breeding` 语义、真实配置文件契约 | ✅ 12 用例全通过 |
+| `src/main/java/com/group_finity/mascot/config/Configuration.java` | Javadoc 修正（复核） | `loadGladosBehaviors` 原注释写「重名保留已有」，与 `put` 覆盖实现相反，而本方案正依赖覆盖语义 | ✅ 已修正，零行为改动 |
+| `docs/glados-managed-constraints-design.md` | 新增 | 本文档（复核时修正 §2.3 事实、精确化 §4.2、补充 §8 限制） | ✅ 已实现 |
 
 **不改动**：
 - `Main.java` 的更新检查与托盘逻辑（已正确，保持原样）
 - `action/Breed.java`（复用原生 `Breeding` 开关，**零改动**）
-- `Manager.java`、`GladosBridge.java`、`Configuration.java`、`GladosOptions.java`（零改动）
+- `Manager.java`、`GladosBridge.java`、`GladosOptions.java` 源码（零改动）
+- `Configuration.java` 源码逻辑（仅修正 Javadoc 措辞，无行为变更）
 - **任何 `conf/*.xml` 与 `conf/settings.properties`**（用户直跑用的原始配置一个字节都不动）
 
-改动量评估：Java 侧 6 行，XML 侧 13 行（含注释），加 8 个测试与本文档。
+改动量评估：Java 侧 6 行（+1 处注释修正），XML 侧 13 行（含注释），加 12 个测试与本文档。
 这是本需求能达到的最小改动面。
 
 ---
@@ -465,6 +483,7 @@ BUILD SUCCESS
 | 分裂动作仍会播 | A 方案只阻止"产生角色"，不阻止"播动作" | 由 B 方案（`glados-behaviors.xml` 禁频）消除 |
 | 用户自带 conf 改名 | 用户若用自己的 `behaviors.xml` 把增殖行为改名，B 方案会落空 | A 方案与行为名无关，仍然生效 |
 | 老 jar 兼容 | 老版本 Shimeji 无此改动，被 GLaDOS 加载时仍会增殖 | 见 §5.3，可选增强 |
+| `--glados-home` 覆盖文件绕过 B 方案 | GLaDOS 若在 home 放自定义 `glados-behaviors.xml`，`GladosBehaviors.loadInto()` 会**完全替换**内置表（不是合并），本轮追加的两条 `Frequency="0"` 便不再生效 | A 方案 `Breeding=false` 与行为名、行为表无关，仍保证不产生新角色，只是可能播出分裂动画。若要求连动画也禁，GLaDOS 侧的覆盖文件需保留这两行，或后续把该约束移到代码层强制施加 |
 
 ### 关于"为什么不用新参数"
 
@@ -476,13 +495,34 @@ BUILD SUCCESS
 
 ---
 
-## 9. 实施顺序建议
+## 9. 实施进度与顺序
 
-1. 先跑一遍**非托管基线**：确认当前版本增殖正常（记录一次分裂的日志/截图），
-   作为后续回归的对照。
-2. 改 `Main.run()` 置 `Breeding=false`，托管模式验证 §6.1 的 1-7 条。
-3. 改 `glados-behaviors.xml` 禁频，验证分裂动作不再出现。
-4. 验证受控创建仍可用（§6.1 第 8-10 条）。
-5. 专项验证 §6.1 第 11 条：`conf/settings.properties` 未被回写。
-6. 跑 §6.2 全部 6 条，确认非托管行为与基线一致。
-7. `mvn test` 全绿后打包，交 GLaDOS 侧联调（§5.1 无需改启动参数）。
+### 9.1 进度总览（截至 2026-11-14）
+
+| 阶段 | 内容 | 状态 | 证据 / 备注 |
+|---|---|---|---|
+| 需求设计与方案选型 | 三条约束；A（复用 `Breeding`）为主 + B（禁频）为补充 | ✅ 完成 | §1–§3 |
+| 约束 1 不检测更新 | `Main.main()` 中 `if (!managed)` | ✅ 完成 | 提交 `ac42658`；托管日志 `skip online update check` |
+| 约束 2 不展示托盘 | `Main.run()` 中 `if (!managed)` | ✅ 完成 | 提交 `ac42658`；`create a tray icon` 仅非托管出现 |
+| 约束 3 禁止增殖（A 逻辑层） | `Main.run()` 置 `Breeding=false`，仅改内存 | ✅ 完成 | 提交 `4255ccc`；日志 `disable autonomous breeding` |
+| 约束 3 禁止增殖（B 表现层） | `glados-behaviors.xml` 两条 `Frequency=0` 同名覆盖 | ✅ 完成 | 提交 `4255ccc`；加载顺序见 §4.2 |
+| 托管回归验证 | 无更新框 / 无托盘、静置 `count` 恒为 1、受控创建 1→2→1、`settings.properties` 未回写 | ✅ 完成 | §6.1 / §6.5 |
+| 非托管回归验证 | 更新检查、托盘与菜单正常、`conf/` 未被污染 | ✅ 完成 | §6.2 / §6.5（增殖端到端除外） |
+| 单元测试 | 32 项全绿 | ✅ 完成 | §6.4；`mvn test -DskipTests=false` |
+| 复核加固 | 覆盖语义 Javadoc 修正、4 个配置契约用例、文档事实修正与限制补充 | ✅ 完成 | 本轮复核（随本次提交），见 §6.3 / §7 / §8 |
+| **真机端到端增殖对照** | 角色拖到地面静置，确认非托管会增殖、托管不增殖 | ⏳ **待办** | §6.5；headless 下角色不落到地面，无法复现，需 GUI 真机 |
+| GLaDOS 侧联调 | 打包交付；启动参数无需变更 | ⏳ 待办 | §5.1；老 jar 能力探测为可选增强，见 §5.3 |
+
+**当前状态**：代码、配置、文档、测试均已就绪，可按 §5.1 的启动参数直接交 GLaDOS 侧联调；
+唯一未闭环的是「自主增殖」的端到端行为验证。该结论目前由源码链路、启动日志、
+配置覆盖三层证据支撑，补测是把结论从「逻辑正确」提升到「行为正确」的最后一步。
+
+### 9.2 原定实施顺序及执行情况
+
+1. 非托管基线（记录一次分裂日志/截图）—— ⏳ 未取得，即 §6.5 所述 headless 限制。
+2. `Main.run()` 置 `Breeding=false`，托管验证 §6.1 第 1–7 条 —— ✅ 完成。
+3. `glados-behaviors.xml` 禁频 —— ✅ 完成（动作不播由 §4.2 覆盖链路保证，真机观察待补）。
+4. 受控创建仍可用（§6.1 第 8–10 条）—— ✅ 完成（`count` 1→2→1、`setRole` 正常）。
+5. `conf/settings.properties` 未被回写（§6.1 第 11 条）—— ✅ 完成，并已加契约用例锁定。
+6. §6.2 非托管全部 6 条 —— ✅ 完成 1–3、5–6；第 4 条（会出现新角色）待真机补测。
+7. `mvn test` 全绿后打包联调 —— ✅ 测试已全绿（32 项）；打包与联调待 GLaDOS 侧。

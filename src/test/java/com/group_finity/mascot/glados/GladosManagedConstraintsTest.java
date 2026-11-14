@@ -1,11 +1,17 @@
 package com.group_finity.mascot.glados;
 
 import org.junit.Test;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.InputStream;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -130,5 +136,97 @@ public class GladosManagedConstraintsTest {
         Properties loaded2 = new Properties();
         boolean managed2 = GladosOptions.parse(new String[]{}).isManaged();
         assertTrue(isBreedingEnabled(applyManagedPolicy(loaded2, managed2)));
+    }
+
+    // ------------------------------------------------------------------
+    // 真实配置文件契约（§7 改动清单的回归保护）
+    // 前 8 个用例验证的是策略语义本身；这里验证「实现载体」没被误删/误改。
+    // 只读 classpath 资源，不触碰 Main / Swing，可在 headless 环境运行。
+    // ------------------------------------------------------------------
+
+    private static Document loadXmlResource(String resource) throws Exception {
+        try (InputStream in = GladosManagedConstraintsTest.class.getResourceAsStream(resource)) {
+            assertNotNull("classpath 资源缺失: " + resource, in);
+            return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(in);
+        }
+    }
+
+    /** 按 Name 属性查找元素；兼容带前缀与不带前缀的 XML 标签。 */
+    private static Element findByName(Document doc, String tag, String name) {
+        NodeList nodes = doc.getElementsByTagName(tag);
+        if (nodes.getLength() == 0) {
+            nodes = doc.getElementsByTagNameNS("*", tag);
+        }
+        for (int i = 0; i < nodes.getLength(); i++) {
+            Element element = (Element) nodes.item(i);
+            if (name.equals(element.getAttribute("Name"))) {
+                return element;
+            }
+        }
+        return null;
+    }
+
+    @Test
+    public void builtInBehaviorTableDisablesBothBreedingBehaviors() throws Exception {
+        Document doc = loadXmlResource("/glados-behaviors.xml");
+
+        for (String name : new String[]{"SplitIntoTwo", "PullUpShimeji"}) {
+            Element behavior = findByName(doc, "Behavior", name);
+            assertNotNull("内置行为表必须声明 " + name + " 的禁频覆盖", behavior);
+            assertEquals(name + " 频率必须为 0", "0", behavior.getAttribute("Frequency"));
+            assertEquals(name + " 必须改用非增殖动作", "Sit", behavior.getAttribute("Action"));
+        }
+    }
+
+    @Test
+    public void originalConfStillAllowsBreedingWhenRunDirectly() throws Exception {
+        // 用户直跑用的 conf/*.xml 一个字节都不能改：这里锁定原始频率。
+        for (String resource : new String[]{"/conf/behaviors.xml", "/conf/MischievousBehavior.xml"}) {
+            Document doc = loadXmlResource(resource);
+            for (String name : new String[]{"SplitIntoTwo", "PullUpShimeji"}) {
+                Element behavior = findByName(doc, "Behavior", name);
+                assertNotNull(resource + " 缺少 " + name, behavior);
+                assertEquals(resource + " 中 " + name + " 应保持原版频率", "50",
+                        behavior.getAttribute("Frequency"));
+            }
+        }
+
+        // 记录事实：Calm 两者天然为 0；Professional 只有 SplitIntoTwo 为 0，
+        // PullUpShimeji 仍是 50 —— 所以「Professional 天然禁用」的说法不成立。
+        Document calm = loadXmlResource("/conf/CalmBehavior.xml");
+        assertEquals("0", findByName(calm, "Behavior", "SplitIntoTwo").getAttribute("Frequency"));
+        assertEquals("0", findByName(calm, "Behavior", "PullUpShimeji").getAttribute("Frequency"));
+
+        Document professional = loadXmlResource("/conf/ProfessionalBehavior.xml");
+        assertEquals("0", findByName(professional, "Behavior", "SplitIntoTwo").getAttribute("Frequency"));
+        assertEquals("50", findByName(professional, "Behavior", "PullUpShimeji").getAttribute("Frequency"));
+    }
+
+    @Test
+    public void settingsPropertiesIsNeverWrittenBack() throws Exception {
+        // 托管只改内存 Properties；若这里出现 Breeding 键，说明有人写回了文件，
+        // 用户之后直接运行会继承 Breeding=false，违背硬性要求。
+        Properties settings = new Properties();
+        try (InputStream in = GladosManagedConstraintsTest.class
+                .getResourceAsStream("/conf/settings.properties")) {
+            assertNotNull("classpath 资源缺失: /conf/settings.properties", in);
+            settings.load(in);
+        }
+        assertEquals("settings.properties 不应含 Breeding 键", null, settings.getProperty("Breeding"));
+    }
+
+    @Test
+    public void breedingActionsAreNotTransient() throws Exception {
+        // Breed.Delegate.isEnabled() 对 BornTransient=true 的动作读的是 Transients
+        // 而不是 Breeding。若这两个动作是瞬态，Breeding=false 就拦不住它们。
+        Document doc = loadXmlResource("/conf/actions.xml");
+        for (String name : new String[]{"Divide1", "PullUpShimeji1"}) {
+            Element action = findByName(doc, "Action", name);
+            assertNotNull("actions.xml 缺少 " + name, action);
+            assertEquals(name + " 应为 Breed 动作", "com.group_finity.mascot.action.Breed",
+                    action.getAttribute("Class"));
+            assertFalse(name + " 不得为瞬态（否则 Breeding 开关失效）",
+                    Boolean.parseBoolean(action.getAttribute("BornTransient")));
+        }
     }
 }

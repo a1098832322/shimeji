@@ -94,12 +94,19 @@ public class Configuration
     }
 
     /**
-     * 合并 GLaDOS AI 行为映射表（glados-behaviors.xml）到本配置。
+     * 合并 GLaDOS 行为表（glados-behaviors.xml）到本配置。
      * <p>
-     * 设计文档：docs/glados-ai-integration-design.md §5
+     * 设计文档：docs/glados-ai-integration-design.md §5、
+     * docs/glados-managed-constraints-design.md §4.2
      * <p>
-     * AI 行为复用本配置中已加载的动作（不新增动作），仅补充 BehaviorList。
-     * 与已有行为重名时保留已有（不覆盖自主行为树）。
+     * 行为复用本配置中已加载的动作（不新增动作），仅补充 BehaviorList。
+     * <p>
+     * <b>同名覆盖语义：</b>{@code loadBehaviors} 使用 {@code put(name, builder)}，
+     * 后写覆盖前写。本方法在 {@code Main.loadConfiguration()}（已加载 actions.xml +
+     * behaviors.xml）之后调用，因此表中的同名声明会顶掉自主行为树里的原始声明。
+     * <p>
+     * 托管模式禁用 {@code SplitIntoTwo} / {@code PullUpShimeji}（Frequency=0）
+     * 正是依赖这一覆盖语义，切勿改成 {@code putIfAbsent} 之类的「保留已有」实现。
      *
      * @param gladosNode glados-behaviors.xml 的根节点
      */
