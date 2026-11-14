@@ -6,6 +6,7 @@ import com.group_finity.mascot.exception.BehaviorInstantiationException;
 import com.group_finity.mascot.exception.CantBeAliveException;
 import com.group_finity.mascot.exception.ConfigurationException;
 import com.group_finity.mascot.glados.GladosBehaviors;
+import com.group_finity.mascot.glados.GladosEventReporter;
 import com.group_finity.mascot.glados.GladosBridge;
 import com.group_finity.mascot.glados.GladosOptions;
 import com.group_finity.mascot.imagesetchooser.ImageSetChooser;
@@ -229,6 +230,8 @@ public class Main {
             // 受管模式下禁止"清空角色即退出"：setRole 会先 disposeAll 再 createMascot，
             // 若 tick 线程在中间检测到 0 角色会误触发退出。退出统一由 quit 命令控制。
             getManager().setExitOnLastRemoved(false);
+            // 交互事件（点击）上报给宿主：GLaDOS 读到后唤起桌宠对话
+            GladosEventReporter.configure(gladosOptions.getHome());
             gladosBridge = new GladosBridge(gladosOptions, manager);
             gladosBridge.start();
             log.info("GLaDOS managed mode enabled (port={}, home={})",

@@ -29,6 +29,8 @@ import com.group_finity.mascot.behavior.Behavior;
 import com.group_finity.mascot.environment.Area;
 import com.group_finity.mascot.environment.MascotEnvironment;
 import com.group_finity.mascot.exception.CantBeAliveException;
+import com.group_finity.mascot.glados.GladosEventReporter;
+import com.group_finity.mascot.glados.GladosOptions;
 import com.group_finity.mascot.hotspot.Hotspot;
 import com.group_finity.mascot.image.MascotImage;
 import com.group_finity.mascot.image.TranslucentWindow;
@@ -214,6 +216,19 @@ public class Mascot
 
     private void mouseReleased(final MouseEvent event)
     {
+        // GLaDOS 托管模式：不提供右键菜单。
+        // 原版菜单里有「增加一个/克隆」等项，会绕过 Breeding 与行为表约束直接
+        // 调用 Main.createMascot，让用户手动生成多个角色；同时菜单还会打开
+        // Shimeji 自己的设置窗口，绕过 GLaDOS 设置页。
+        // 托管下把点击交给 GLaDOS 处理（点击唤出桌宠对话），不复用原版菜单。
+        if( GladosOptions.isManagedProcess( ) )
+        {
+            if( event.getButton( ) == MouseEvent.BUTTON3 || event.isPopupTrigger( ) )
+            {
+                return;
+            }
+        }
+
         // macOS 上 isPopupTrigger() 不会触发，需要检查右键按钮
         if( event.isPopupTrigger( ) || event.getButton( ) == MouseEvent.BUTTON3 )
         {
@@ -240,6 +255,15 @@ public class Mascot
                     Main.showError( Main.getInstance( ).getLanguageBundle( ).getProperty( "SevereShimejiErrorErrorMessage" ) );
                     dispose( );
                 }
+            }
+
+            // GLaDOS 托管模式：把「点一下」上报给宿主，用于唤出桌宠对话。
+            // 拖拽不算点击（用户只是在挪位置）；只有左键且未发生拖拽时才上报。
+            if( GladosOptions.isManagedProcess( )
+                && event.getButton( ) == MouseEvent.BUTTON1
+                && !isDragging( ) )
+            {
+                GladosEventReporter.report( GladosEventReporter.EVENT_CLICK );
             }
         }
     }
