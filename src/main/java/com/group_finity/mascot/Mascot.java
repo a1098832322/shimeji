@@ -114,6 +114,12 @@ public class Mascot
      */
     private boolean dragging = false;
 
+    /** 左键按下时的屏幕坐标，用于区分「点击」与「拖动」。null 表示当前没有按下过。 */
+    private Point pressPoint = null;
+
+    /** 位移超过该像素数视为拖动，不当作点击。取 4px 容忍手抖。 */
+    private static final int CLICK_SLOP_PX = 4;
+
     private MascotEnvironment environment = new MascotEnvironment( this );
 
     private String sound = null;
@@ -198,6 +204,13 @@ public class Mascot
 
     private void mousePressed( final MouseEvent event )
     {
+        // 记录按下点，供 mouseReleased 判断这是一次点击还是拖动。
+        // 必须在 behavior.mousePressed 之前记录——那里可能改变坐标。
+        if( event.getButton( ) == MouseEvent.BUTTON1 )
+        {
+            pressPoint = event.getLocationOnScreen( );
+        }
+
         // Switch to drag the animation when the mouse is down
         if( !isPaused( ) && getBehavior( ) != null )
         {
@@ -258,14 +271,32 @@ public class Mascot
             }
 
             // GLaDOS 托管模式：把「点一下」上报给宿主，用于唤出桌宠对话。
-            // 拖拽不算点击（用户只是在挪位置）；只有左键且未发生拖拽时才上报。
+            // 注意不能判断 isDragging()：UserBehavior.mouseReleased 内部会先
+            // setDragging(false)，到这里已经归零，拖拽松手会被误判成点击。
+            // 改为比较按下与释放的屏幕坐标——移动距离超过阈值就算拖拽。
             if( GladosOptions.isManagedProcess( )
                 && event.getButton( ) == MouseEvent.BUTTON1
-                && !isDragging( ) )
+                && !isDragGesture( event ) )
             {
                 GladosEventReporter.report( GladosEventReporter.EVENT_CLICK );
             }
+            // 本次手势结束，清空按下点，避免下一次释放沿用旧坐标
+            pressPoint = null;
         }
+    }
+
+    /** 本次按下到释放的位移是否构成拖拽（用于区分点击与拖动）。 */
+    private boolean isDragGesture( final MouseEvent event )
+    {
+        if( pressPoint == null )
+        {
+            // 没有记录到按下点，保守认为不是点击，避免误开对话
+            return true;
+        }
+        final Point current = event.getLocationOnScreen( );
+        final int dx = current.x - pressPoint.x;
+        final int dy = current.y - pressPoint.y;
+        return Math.hypot( dx, dy ) > CLICK_SLOP_PX;
     }
 
     private void showPopup( final int x, final int y )
