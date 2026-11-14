@@ -1,6 +1,8 @@
 package com.group_finity.mascot.config;
 
 import com.group_finity.mascot.Main;
+import com.group_finity.mascot.glados.GladosManagedConstraints;
+import com.group_finity.mascot.glados.GladosOptions;
 import java.awt.Point;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -298,6 +300,16 @@ public class Configuration
     
     public boolean isBehaviorEnabled( final BehaviorBuilder builder, final Mascot mascot )
     {
+        // GLaDOS 托管模式：强制禁用自主增殖行为。
+        // 放在这里而不是只靠 glados-behaviors.xml，是因为 GladosBehaviors.loadInto()
+        // 在存在覆盖文件时是「替换」而非「合并」内置表——用户自定义的
+        // --glados-home/glados-behaviors.xml 会让内置的 Frequency=0 声明失效。
+        // 在选行为时硬过滤，与配置来源无关，任何覆盖文件都绕不过去。
+        if( GladosOptions.isManagedProcess( ) && GladosManagedConstraints.isBreedingBehavior( builder.getName( ) ) )
+        {
+            return false;
+        }
+
         if( builder.isToggleable( ) )
         {
             for( String behaviour : Main.getInstance( ).getProperties( ).getProperty( "DisabledBehaviours." + mascot.getImageSet( ), "" ).split( "/" ) )

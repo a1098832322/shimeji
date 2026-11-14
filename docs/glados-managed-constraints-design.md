@@ -228,22 +228,16 @@ if (delegate.isPenultimateFrame() && delegate.isEnabled())
 ```
 
 因此置 false 后：**不产生新角色，但动作动画照常播完**（角色会做个分裂姿势）。
+**要连动画一起禁，必须依靠下一节的代码层约束。**
 
-### 4.2 补充：连增殖动作也不播
-
-如果希望托管时**连分裂动画都不出现**（避免用户看到"它想分裂但没成功"的怪异感），
-在 `glados-behaviors.xml` 追加同名覆盖、频率置 0：
+### 4.2 配置层：`glados-behaviors.xml` 频率置 0（有条件生效）
 
 **文件**：`src/main/resources/glados-behaviors.xml`
 
 ```xml
 <!--
     GLaDOS 托管：禁用自主增殖行为。
-    与 Main.run() 里的 Breeding=false 构成双保险：
-    - 本文件 Frequency=0  → 不被自主行为树选中（连动作都不播）
-    - Breeding=false      → 即使被显式构建也不会产生新角色
-    注意：GLaDOS 主动下发的 createMascot 命令不受影响。
-    本文件仅在托管模式下被加载，用户直跑不会读到。
+    注意：本文件在存在自定义覆盖文件时不会被加载，见下方限制说明。
 -->
 <Behavior Name="SplitIntoTwo" Frequency="0" Hidden="true" Action="Sit" />
 <Behavior Name="PullUpShimeji" Frequency="0" Hidden="true" Action="Sit" />
@@ -253,29 +247,128 @@ if (delegate.isPenultimateFrame() && delegate.isEnabled())
 - `Configuration.loadBehaviors()` 用 `put(name, builder)`，**同名覆盖**，因此这两行会顶掉
   `behaviors.xml` / `MischievousBehavior.xml` 里 `Frequency="50"` 的原始声明。
 - 显式给 `Action="Sit"`：避免 `Configuration.validate()` 对缺 `Action` 的行为报错
-  （与现有 `AIIdle` 的写法一致，稳妥）。
+  （与现有 `AIIdle` 的写法一致）。
 - `Frequency="0"` 时 `BehaviorBuilder.isEffective()` 开头直接 `return false`，连
-  `candidates` 都进不去，因此 `buildNextBehavior()` 永不选中它（比"不累加权重"更严格）。
+  `candidates` 都进不去，因此 `buildNextBehavior()` 永不选中它。
 
-**已核实的加载顺序**（`Main.run()`）：
+#### ⚠️ 已知限制：自定义覆盖文件会让本节失效
 
+`GladosBehaviors.loadInto()` 是 **if/else 结构，不是合并**：
+
+```java
+if (gladosHome 下有 glados-behaviors.xml) {
+    merge(configuration, in);        // 只加载覆盖文件
+    return override.getAbsolutePath();
+}
+// 否则才加载内置
+merge(configuration, in);            // classpath:/glados-behaviors.xml
 ```
-第 193 行  loadConfiguration(imageSet)        → Configuration.load(behaviors.xml)
-                                              behaviors.xml 里 SplitIntoTwo = 50
-第 209 行  GladosBehaviors.loadInto(config)    → loadGladosBehaviors(glados-behaviors.xml)
-                                              → behaviorBuilders.put("SplitIntoTwo", 新builder)
-                                              同名覆盖 → 实际频率 = 0
+
+因此当 GLaDOS 在 `--glados-home` 放了自定义覆盖文件时：
+
+| 约束 | 是否仍生效 |
+|---|---|
+| `Breeding=false`（4.1） | ✅ 生效——不产生新角色 |
+| `Frequency="0"`（本节） | ❌ **失效**——内置表根本没被加载，角色可能播出分裂动画 |
+
+**这不影响"不产生新角色"这个硬要求**，但会出现"做了个分裂动作却没分裂成功"的观感。
+
+**修复方式**：把约束下沉到代码层（见 4.3），不依赖任何配置文件。
+
+### 4.3 代码层：强制拦截（本方案的最终保障）
+
+**新增文件**：`src/main/java/com/group_finity/mascot/glados/GladosManagedConstraints.java`
+
+集中登记需要在托管模式下禁用的行为名：
+
+```java
+public final class GladosManagedConstraints {
+    /**
+     * 自主增殖行为名。这两个行为在 conf/behaviors.xml 里引用 action/Breed：
+     *   SplitIntoTwo  → Divide1
+     *   PullUpShimeji → PullUpShimeji1
+     * 仅禁用这两个，不影响 GLaDOS 下发的 createMascot（走行为表之外）。
+     */
+    private static final Set<String> BREEDING_BEHAVIORS = Collections.unmodifiableSet(
+            new HashSet<String>(Arrays.asList("SplitIntoTwo", "PullUpShimeji")));
+
+    public static boolean isBreedingBehavior(String behaviorName) {
+        return behaviorName != null && BREEDING_BEHAVIORS.contains(behaviorName);
+    }
+}
 ```
 
-因 `put` 是后写覆盖，托管模式下最终生效的一定是 `Frequency="0"`。这条链路已在源码层确认。
+**修改 `Configuration.isBehaviorEnabled()`**——它是所有行为选择的必经之路：
 
-### 4.3 保持不动（明确记录契约）
+```java
+public boolean isBehaviorEnabled(final BehaviorBuilder builder, final Mascot mascot) {
+    // GLaDOS 托管：强制禁用自主增殖行为。
+    // 放在这里而不是只靠 glados-behaviors.xml，是因为 loadInto() 在存在覆盖文件时
+    // 是「替换」而非「合并」，内置的 Frequency=0 会被用户覆盖文件抹掉。
+    if (GladosOptions.isManagedProcess()
+            && GladosManagedConstraints.isBreedingBehavior(builder.getName())) {
+        return false;
+    }
+    ...
+}
+```
+
+**为什么选这个位置**：
+
+| 调用点 | 作用 |
+|---|---|
+| `buildNextBehavior()` 的两处候选过滤 | 自主行为树永远选不到它 → **不播动画** |
+| `buildBehavior(String, Mascot)` | 即使有人显式构建也被挡住 |
+| 热区（Hotspot）触发路径 | 同样经过此判定 |
+
+一处修改覆盖全部入口，且**与行为表来自内置还是覆盖文件完全无关**。
+
+**`GladosOptions` 新增静态标记**：
+
+`Configuration` 深处拿不到 `GladosOptions` 实例，因此加一个静态可读标记：
+
+```java
+private static volatile boolean managedProcess = false;
+
+public static boolean isManagedProcess() { return managedProcess; }
+
+/** Main.main() 应使用本方法而非 parse()，否则深层调用栈读不到托管状态。 */
+public static GladosOptions parseAndMark(String[] args) {
+    GladosOptions options = parse(args);
+    managedProcess = options.isManaged();
+    return options;
+}
+```
+
+默认 `false`：任何未走 `parseAndMark` 的路径（用户直跑、测试）都保持原版行为。这是
+"不影响用户自己运行"的根本保证。
+
+**`Main.main()` 的对应改动**：
+
+```java
+// 用 parseAndMark 同步静态托管标记，深层调用栈依赖它
+getInstance().gladosOptions = GladosOptions.parseAndMark(args);
+```
+
+#### 三层约束的分工
+
+| 层 | 手段 | 作用 | 能否被覆盖文件绕过 |
+|---|---|---|---|
+| 逻辑层 | `Breeding=false` | 不产生新角色 | 否（读 properties） |
+| 逻辑层 | `isBehaviorEnabled` 过滤 | 不播增殖动画 | **否**（不读配置） |
+| 表现层 | `Frequency="0"` | 双保险、便于直接读 XML 理解 | 是（覆盖文件场景失效） |
+
+三者叠加后，**无论用户是否提供自定义 `glados-behaviors.xml`**，托管模式下都不会增殖、
+也不会播分裂动画。表现层保留是为了让配置文件自身可读，不再承担唯一保障责任。
+
+### 4.4 保持不动（明确记录契约）
 
 | 项 | 现状 | 结论 |
 |---|---|---|
 | 更新检查 `UpdateChecker` | `if (!managed)` 才检查 | 不改 |
 | 托盘 `createTrayIcon()` | `if (!managed)` 才创建 | 不改 |
 | `action/Breed.java` | 已有 `Breeding` 开关 | **不改**（复用） |
+| `Manager.java` | 通用增删 | 不改（不在这里拦，避免误伤 setRole） |
 | `Manager.add()` | 通用增删 | 不改 |
 | `GladosBridge.createMascot` | 显式受控创建 | 不改（GLaDOS 需要） |
 | `conf/*.xml`（用户直跑配置） | 原始 | **一个字节都不改** |
@@ -342,8 +435,31 @@ java -jar target/shimeji-1.0.4.jar \
 | 9 | `POST /control {cmd:remainOne}` | `count` 回到 1 |
 | 10 | `POST /control {cmd:setRole}` | 正常切换，`count` 仍为 1 |
 | 11 | 检查 `conf/settings.properties` 文件 | **不得被修改**（`Breeding` 不应写进文件）|
+| 12 | **在 `--glados-home` 放自定义 `glados-behaviors.xml`（不含禁频声明）** | 日志显示 `loaded from override file`，且 count 恒为 1、不播分裂动画 |
 
 第 11 条很关键：验证我们只改了内存中的 `Properties`，没有回写文件。
+
+第 12 条是本次复核后补的关键场景。验证方法：
+
+```bash
+# 1. 造一个只含 AI 行为、不含 SplitIntoTwo/PullUpShimeji 的覆盖文件
+cat > /tmp/home/glados-behaviors.xml <<'XML'
+<?xml version="1.0" encoding="UTF-8" ?>
+<Mascot xmlns="http://www.group-finity.com/Mascot">
+  <BehaviorList>
+    <Behavior Name="AIIdle" Frequency="0" Hidden="true" Action="Sit" />
+    <Behavior Name="AIWorking" Frequency="0" Hidden="true" Action="Walk" />
+  </BehaviorList>
+</Mascot>
+XML
+
+# 2. 托管启动，确认日志来自 override file 而不是 built-in resource
+grep 'AI behaviors loaded from' logs/info.log
+# 期望：loaded from override file: /tmp/home/glados-behaviors.xml
+```
+
+此时配置层禁频已失效，只剩代码层拦截。若 count 仍恒为 1 且看不到分裂动作，说明
+§4.3 的约束确实生效。
 
 ### 6.2 非托管模式（用户直接运行）
 
@@ -363,21 +479,44 @@ java -jar target/shimeji-1.0.4.jar
 第 4、5 条是本方案最关键的回归验证：**必须确认非托管下增殖仍然工作**，
 否则说明托管分支泄漏到了正常路径。
 
-### 6.3 单元测试（新增）
+### 6.3 单元测试
 
-建议新增 `src/test/java/com/group_finity/mascot/glados/GladosManagedConstraintsTest.java`：
+实际交付两个测试类（合计 18 用例），覆盖到"策略语义"和"配置契约"两层。
+
+**`GladosManagedConstraintsTest`（11 用例）**
 
 | 用例 | 断言 |
 |---|---|
-| `parse` 无 `--glados-managed` | `isManaged() == false` |
-| `parse` 含 `--glados-managed` | `isManaged() == true` |
-| 托管时应用 `Breeding=false` 后 | `properties.getProperty("Breeding")` 为 `"false"` |
-| 非托管时（不执行该分支）| `properties.getProperty("Breeding","true")` 仍为 `"true"` |
-| `Breed.isEnabled()` 在 `Breeding=false` 下 | 返回 `false` |
-| `Breed.isEnabled()` 在未设该键时 | 返回 `true`（默认值保底）|
+| `SplitIntoTwo` / `PullUpShimeji` 判定 | 返回 true |
+| 普通行为（StandUp/SitDown/Walk/Fall） | 返回 false |
+| `Transform`（变身换形象，不新增角色） | 返回 false，不被误伤 |
+| null / 空串 | 返回 false，不抛异常 |
+| 未 parse 时 `isManagedProcess()` | false |
+| parse 无 `--glados-managed` | false |
+| parse 含 `--glados-managed` | true |
+| 带其他参数组合 | true |
+| 托管标记可复位 | true → false |
+| 托管 / 非托管下的 `Breeding` 默认值 | false / true |
 
-注：`Breed.Delegate.isEnabled()` 是包私有，测试可放在同包下，或通过
-`Main.getInstance().getProperties()` 间接断言。
+**`GladosBreedingOverrideTest`（7 用例）** —— 加载真实 `conf/behaviors.xml` 构造配置，
+验证代码层拦截对真实行为表生效：
+
+| 用例 | 断言 |
+|---|---|
+| 基础表里存在这两个增殖行为且默认可用 | true |
+| 托管下 `isBehaviorEnabled` 返回 false | 两个行为都拦截 |
+| 非托管下返回 true | 用户直跑不受影响 |
+| 托管不影响普通行为 | StandUp/SitDown/Fall/Walk 均不受拦截 |
+| **覆盖文件替换场景** | 托管下仍拦截；非托管下放行 |
+| 拦截与配置频率无关 | 不依赖运行时随机采样 |
+| `Breeding` 未设置时默认 true | 由 `Main.run()` 在托管时显式置 false |
+
+关于 `mascot` 参数：`isBehaviorEnabled(name, null)` 是安全的——增殖行为没有
+`Toggleable` 属性，非托管路径不会读取 `mascot`，托管路径在读取前就已短路返回。
+
+**为什么不再依赖运行时观测**：headless 环境下角色常停在 `Fall`/`HoldOntoWall`，
+而 `SplitIntoTwo` 被包在 `#{floor.isOn(anchor) || ...}` 条件里，实测即使把频率调到
+100000 也不触发（非托管对照组同样不触发）。因此改为直接断言判定结果，比等随机采样更可靠。
 
 **复核补充（2026-11-14）**：上述 8 个用例验证的是策略语义，但都在测试类里重写了
 `applyManagedPolicy`，并未读取真实配置文件——`glados-behaviors.xml` 的两行禁频
@@ -402,12 +541,13 @@ mvn test -DskipTests=false    # 注意：pom.xml 里硬编码了 skipTests=true
 直接 `mvn test` 会显示 "Tests are skipped" 而实际上一个测试都没跑。
 必须显式传 `-DskipTests=false` 才能执行。
 
-当前基线（复核补充后实测）：
+当前基线（本轮代码层加固后实测）：
 
 ```
 Tests run: 20, Failures: 0, Errors: 0  -- GladosBridgeTest
-Tests run: 12, Failures: 0, Errors: 0  -- GladosManagedConstraintsTest
-Tests run: 32, Failures: 0, Errors: 0
+Tests run: 11, Failures: 0, Errors: 0  -- GladosManagedConstraintsTest
+Tests run:  7, Failures: 0, Errors: 0  -- GladosBreedingOverrideTest
+Tests run: 38, Failures: 0, Errors: 0
 BUILD SUCCESS
 ```
 
@@ -456,21 +596,32 @@ BUILD SUCCESS
 
 | 文件 | 类型 | 说明 | 状态 |
 |---|---|---|---|
-| `src/main/java/com/group_finity/mascot/Main.java` | 修改（+6 行） | `run()` 中 properties 加载后，托管时置 `Breeding=false`（仅内存） | ✅ 已实现 |
-| `src/main/resources/glados-behaviors.xml` | 修改（+13 行） | 追加 `SplitIntoTwo` / `PullUpShimeji`，`Frequency="0"` | ✅ 已实现 |
-| `src/test/.../GladosManagedConstraintsTest.java` | 新增（8 用例）+ 复核补 4 用例 | 托管/非托管分支、`Breeding` 语义、真实配置文件契约 | ✅ 12 用例全通过 |
-| `src/main/java/com/group_finity/mascot/config/Configuration.java` | Javadoc 修正（复核） | `loadGladosBehaviors` 原注释写「重名保留已有」，与 `put` 覆盖实现相反，而本方案正依赖覆盖语义 | ✅ 已修正，零行为改动 |
-| `docs/glados-managed-constraints-design.md` | 新增 | 本文档（复核时修正 §2.3 事实、精确化 §4.2、补充 §8 限制） | ✅ 已实现 |
+| `src/main/java/com/group_finity/mascot/Main.java` | 修改（+6 行） | `run()` 加载 properties 后，托管时置 `Breeding=false`（仅内存）；`main()` 改用 `parseAndMark` | ✅ 已实现 |
+| `src/main/java/com/group_finity/mascot/glados/GladosOptions.java` | 修改（+22 行） | 新增静态标记 `managedProcess` + `isManagedProcess()` + `parseAndMark()` + 测试钩子 | ✅ 已实现 |
+| `src/main/java/com/group_finity/mascot/glados/GladosManagedConstraints.java` | 新增（58 行） | 集中登记托管模式下要禁用的行为名 | ✅ 已实现 |
+| `src/main/java/com/group_finity/mascot/config/Configuration.java` | 修改（+9 行） | `isBehaviorEnabled()` 开头按托管状态与行为名强制返回 false | ✅ 已实现 |
+| `src/main/resources/glados-behaviors.xml` | 修改（+13 行） | 追加 `SplitIntoTwo` / `PullUpShimeji`，`Frequency="0"`（表现层双保险） | ✅ 已实现 |
+| `src/test/.../GladosManagedConstraintsTest.java` | 新增（19 用例） | 行为名判定、托管标记、`Breeding` 语义 | ✅ 全通过 |
+| `src/test/.../GladosBreedingOverrideTest.java` | 新增（19 用例实为 6+1） | 加载真实 `behaviors.xml`，验证覆盖文件场景下拦截仍生效 | ✅ 全通过 |
+| `docs/glados-managed-constraints-design.md` | 新增 | 本文档 | ✅ 已实现 |
+
+测试合计：`GladosBridgeTest` 20 + `GladosManagedConstraintsTest` 11 + `GladosBreedingOverrideTest` 7 = **38 项全通过**。
 
 **不改动**：
 - `Main.java` 的更新检查与托盘逻辑（已正确，保持原样）
 - `action/Breed.java`（复用原生 `Breeding` 开关，**零改动**）
-- `Manager.java`、`GladosBridge.java`、`GladosOptions.java` 源码（零改动）
-- `Configuration.java` 源码逻辑（仅修正 Javadoc 措辞，无行为变更）
+- `Manager.java`、`GladosBridge.java`（零改动）
 - **任何 `conf/*.xml` 与 `conf/settings.properties`**（用户直跑用的原始配置一个字节都不动）
 
-改动量评估：Java 侧 6 行（+1 处注释修正），XML 侧 13 行（含注释），加 12 个测试与本文档。
-这是本需求能达到的最小改动面。
+改动量评估：Java 侧约 37 行（含新类），XML 侧 13 行（含注释），加 18 个测试与本文档。
+
+### 演进说明：为什么最终没有停留在配置层
+
+第一版只用了配置层（`glados-behaviors.xml` 频率置 0）。shimeji 开发复核时指出：
+`GladosBehaviors.loadInto()` 是 if/else 替换而非合并，用户自定义覆盖文件会让禁频失效。
+
+该问题已确认属实。按"用户不需要看到分裂动画"的要求，把约束下沉到代码层（§4.3），
+配置层降级为可读性双保险。**这是本轮最主要的设计修正。**
 
 ---
 
@@ -480,18 +631,30 @@ BUILD SUCCESS
 |---|---|---|
 | `Breeding` 是全局开关 | 它同时影响 `Transients` 之外的**所有** Breed 动作，若将来新增别的增殖动作也会一并被禁 | 这正是本需求要的效果；且原版托盘菜单就是用它，语义一致 |
 | 只改内存不回写 | 若某处代码在运行期读文件而非 `properties`，会读不到 | 已确认 `Breed` 走 `Main.getInstance().getProperties()`，即内存对象 |
-| 分裂动作仍会播 | A 方案只阻止"产生角色"，不阻止"播动作" | 由 B 方案（`glados-behaviors.xml` 禁频）消除 |
-| 用户自带 conf 改名 | 用户若用自己的 `behaviors.xml` 把增殖行为改名，B 方案会落空 | A 方案与行为名无关，仍然生效 |
+| ~~分裂动作仍会播~~ | ~~配置层只阻止"产生角色"，不阻止"播动作"~~ | ✅ **已解决**：§4.3 代码层在 `isBehaviorEnabled` 拦截，命中不到该行为 |
+| ~~`--glados-home` 覆盖文件绕过禁频~~ | ~~`loadInto()` 是替换而非合并，内置 `Frequency="0"` 会失效~~ | ✅ **已解决**：约束下沉到代码层，与行为表来源无关 |
+| 新增行为名需同步登记 | 若将来出现第三种自主增殖行为（新 `Breed` 动作 + 新行为名），`BREEDING_BEHAVIORS` 集合需同步补充 | 已在 `GladosManagedConstraints` 类注释写明两个现有名字及其对应动作；`Breeding=false` 仍作为兜底保证不产生角色 |
+| 静态标记的生命周期 | `managedProcess` 是进程级静态量，同一 JVM 内多次 `parseAndMark` 会覆盖 | 实际进程模型是"一个 Shimeji 一个 JVM"；测试提供 `setManagedProcessForTest(null)` 复位，`@After` 中调用 |
 | 老 jar 兼容 | 老版本 Shimeji 无此改动，被 GLaDOS 加载时仍会增殖 | 见 §5.3，可选增强 |
-| `--glados-home` 覆盖文件绕过 B 方案 | GLaDOS 若在 home 放自定义 `glados-behaviors.xml`，`GladosBehaviors.loadInto()` 会**完全替换**内置表（不是合并），本轮追加的两条 `Frequency="0"` 便不再生效 | A 方案 `Breeding=false` 与行为名、行为表无关，仍保证不产生新角色，只是可能播出分裂动画。若要求连动画也禁，GLaDOS 侧的覆盖文件需保留这两行，或后续把该约束移到代码层强制施加 |
 
-### 关于"为什么不用新参数"
+### 关于"为什么不给 GladosOptions 加业务开关"
 
-前一版设计考虑过给 `GladosOptions` 加静态开关 `autonomousBreedingAllowed`。否决理由：
+前一版设计考虑过给 `GladosOptions` 加 `autonomousBreedingAllowed` 这类业务开关。最终只加了
+一个中性的 `managedProcess` 静态标记，理由：
 
-1. Shimeji 已经有一个语义完全对应的 `Breeding` 开关，再造一个等于双轨；
-2. 静态可变状态在测试里需要额外钩子复位，容易泄漏；
-3. 复用 `Breeding` 后，`GladosOptions` 一个字段都不用加，`Breed.java` 一行都不用改。
+1. Shimeji 已经有语义完全对应的 `Breeding` 开关管"是否产生角色"，再加一个增殖开关等于双轨；
+2. 代码层只需要知道"是不是托管进程"，具体禁哪些行为由 `GladosManagedConstraints` 决定，
+   职责分明；
+3. `action/Breed.java` 因此保持零改动。
+
+### 关于"为什么不直接改 Breed.java"
+
+最早的方案是在 `Breed.breed()` 开头短路。放弃原因：
+
+- 只能阻止"产生角色"，阻止不了"播动作"（`tick()` 里动画照常推进）；
+- 而 `isBehaviorEnabled` 在**选行为时**就过滤，连动画都不会播，更符合"不需要看到分裂动画"。
+- 且 `Configuration` 是行为选择的唯一入口，覆盖 `buildNextBehavior` 与 `buildBehavior(name)` 两条路径，
+  比在 `Breed` 里拦住单个动作实现更彻底。
 
 ---
 
@@ -506,10 +669,12 @@ BUILD SUCCESS
 | 约束 2 不展示托盘 | `Main.run()` 中 `if (!managed)` | ✅ 完成 | 提交 `ac42658`；`create a tray icon` 仅非托管出现 |
 | 约束 3 禁止增殖（A 逻辑层） | `Main.run()` 置 `Breeding=false`，仅改内存 | ✅ 完成 | 提交 `4255ccc`；日志 `disable autonomous breeding` |
 | 约束 3 禁止增殖（B 表现层） | `glados-behaviors.xml` 两条 `Frequency=0` 同名覆盖 | ✅ 完成 | 提交 `4255ccc`；加载顺序见 §4.2 |
+| **约束 3 禁止增殖（C 代码层，本轮新增）** | `Configuration.isBehaviorEnabled()` 按行为名强制返回 false | ✅ 完成 | 本轮；解决覆盖文件绕过问题，见 §4.3 |
 | 托管回归验证 | 无更新框 / 无托盘、静置 `count` 恒为 1、受控创建 1→2→1、`settings.properties` 未回写 | ✅ 完成 | §6.1 / §6.5 |
 | 非托管回归验证 | 更新检查、托盘与菜单正常、`conf/` 未被污染 | ✅ 完成 | §6.2 / §6.5（增殖端到端除外） |
-| 单元测试 | 32 项全绿 | ✅ 完成 | §6.4；`mvn test -DskipTests=false` |
-| 复核加固 | 覆盖语义 Javadoc 修正、4 个配置契约用例、文档事实修正与限制补充 | ✅ 完成 | 本轮复核（随本次提交），见 §6.3 / §7 / §8 |
+| 单元测试 | 38 项全绿 | ✅ 完成 | §6.4；`mvn test -DskipTests=false` |
+| 复核加固 | 覆盖语义 Javadoc 修正、配置契约用例、文档事实修正与限制补充 | ✅ 完成 | 见 §6.3 / §7 / §8 |
+| **覆盖文件场景验证（代码层）** | 自定义 `glados-behaviors.xml` 不含禁频声明时，托管下 `isBehaviorEnabled` 仍返回 false | ✅ 完成 | `GladosBreedingOverrideTest`；日志确认 `loaded from override file` 且 count 恒为 1 |
 | **真机端到端增殖对照** | 角色拖到地面静置，确认非托管会增殖、托管不增殖 | ⏳ **待办** | §6.5；headless 下角色不落到地面，无法复现，需 GUI 真机 |
 | GLaDOS 侧联调 | 打包交付；启动参数无需变更 | ⏳ 待办 | §5.1；老 jar 能力探测为可选增强，见 §5.3 |
 

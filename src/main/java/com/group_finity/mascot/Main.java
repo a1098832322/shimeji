@@ -89,7 +89,8 @@ public class Main {
         System.setProperty("sun.java2d.dpiaware", "true");
         
         // 解析 GLaDOS 启动参数（必须在 run() 之前，供受管模式判断）
-        getInstance().gladosOptions = GladosOptions.parse(args);
+        // 用 parseAndMark 同步静态托管标记，深层调用栈（Configuration.isBehaviorEnabled）依赖它
+        getInstance().gladosOptions = GladosOptions.parseAndMark(args);
 
         try {
             //检测更新（受管模式跳过：由 GLaDOS 管理生命周期，不自行更新）
