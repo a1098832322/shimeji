@@ -40,11 +40,11 @@ public class UpdateJSONGenerator {
     @Before
     public void before() {
         data = new DataAnalysis();
-        // 版本号从 pom.xml 中获取，当前版本为 1.0.4
-        data.setVersion("1.0.4");
+        // 版本号从 pom.xml 中获取，当前版本为 1.1.0
+        data.setVersion("1.1.0");
         // 精炼后的更新内容（不超过100字）
         data.setMessage("支持MacOS 26系统;迁移至Logback日志框架并实现分级输出;新增可选调试窗口;修复所有已知CVE安全漏洞;优化DPI缩放支持;修复多项平台兼容性Bug,提升稳定性。");
-        data.setUrl("https://wishes-blog.cn/shimeji/1.0.4/shimeji.jar");
+        data.setUrl("https://wishes-blog.cn/shimeji/1.1.0/shimeji.jar");
         data.setUpdateType(Constant.UPDATE_TYPE.MAIN.getType());
     }
 
