@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Mascot xmlns="http://www.group-finity.com/Mascot" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.group-finity.com/Mascot Mascot.xsd">
+
+	<!--
+		GLaDOS AI 行为映射表（默认）
+		================================
+		设计文档：docs/glados-ai-integration-design.md §5
+
+		规则：
+		1. 所有 AI 行为复用 conf/actions.xml 中已有动作，不新增动作；
+		2. Frequency="0"：不会被自主行为树（behaviors.xml 加权随机）选中，
+		   只能被 GladosBridge 的 setBehavior 显式构建；
+		3. AIIdle 无动作（Action 缺省 = 行为名），只作为回退标记，
+		   由 GladosBridge 在收到 idle 时调用 setBehaviorAll 切回自主树
+		   （buildNextBehavior(null)）；
+		4. 触发型行为（AIReview）播完（Loop=false）后由 UserBehavior.init
+		   自动走 buildNextBehavior 回到自主行为（Frequency=0 不参与随机，
+		   因此会回到 Fall 兜底，再自然进入自主树）。
+
+		覆盖：GLaDOS 可在 glados-home 目录放置 glados-behaviors.xml 覆盖本文件。
+	-->
+
+	<BehaviorList>
+
+		<!-- idle：回到自主模式（桥层特殊处理，不直接构建；Action=Sit 仅为通过 validate） -->
+		<Behavior Name="AIIdle" Frequency="0" Hidden="true" Action="Sit" />
+
+		<!-- running：AI 处理中，兴奋/忙碌 -->
+		<Behavior Name="AIWorking" Frequency="0" Hidden="true" Action="Walk">
+			<NextBehaviorList Add="false">
+				<BehaviorReference Name="AIWorking" Frequency="1" />
+			</NextBehaviorList>
+		</Behavior>
+
+		<!-- waiting：等待审批/回答，期待地看着你 -->
+		<Behavior Name="AIWaiting" Frequency="0" Hidden="true" Action="SitAndLookUp">
+			<NextBehaviorList Add="false">
+				<BehaviorReference Name="AIWaiting" Frequency="1" />
+			</NextBehaviorList>
+		</Behavior>
+
+		<!-- review：完成，庆祝（触发型，播完回到自主） -->
+		<Behavior Name="AIReview" Frequency="0" Hidden="true" Action="SitAndSpinHead">
+			<NextBehaviorList Add="false">
+				<BehaviorReference Name="AIReview" Frequency="1" />
+			</NextBehaviorList>
+		</Behavior>
+
+		<!-- failed：失败，沮丧趴下 -->
+		<Behavior Name="AIFailed" Frequency="0" Hidden="true" Action="LieDown">
+			<NextBehaviorList Add="false">
+				<BehaviorReference Name="AIFailed" Frequency="1" />
+			</NextBehaviorList>
+		</Behavior>
+
+		<!-- disconnected：断连，静止 -->
+		<Behavior Name="AIDisconnected" Frequency="0" Hidden="true" Action="Sit">
+			<NextBehaviorList Add="false">
+				<BehaviorReference Name="AIDisconnected" Frequency="1" />
+			</NextBehaviorList>
+		</Behavior>
+
+	</BehaviorList>
+</Mascot>

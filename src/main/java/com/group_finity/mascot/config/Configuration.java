@@ -93,6 +93,24 @@ public class Configuration
 
     }
 
+    /**
+     * 合并 GLaDOS AI 行为映射表（glados-behaviors.xml）到本配置。
+     * <p>
+     * 设计文档：docs/glados-ai-integration-design.md §5
+     * <p>
+     * AI 行为复用本配置中已加载的动作（不新增动作），仅补充 BehaviorList。
+     * 与已有行为重名时保留已有（不覆盖自主行为树）。
+     *
+     * @param gladosNode glados-behaviors.xml 的根节点
+     */
+    public void loadGladosBehaviors( final Entry gladosNode )
+    {
+        for( final Entry list : gladosNode.selectChildren( schema.getString( "BehaviourList" ) ) )
+        {
+            loadBehaviors( list, new ArrayList<String>( ) );
+        }
+    }
+
 	private void loadBehaviors( final Entry list, final List<String> conditions )
         {
             for( final Entry node : list.getChildren( ) )

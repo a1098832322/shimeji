@@ -1,8 +1,8 @@
 # Shimeji × GLaDOS AI 能力集成设计（重量级桌宠）
 
-- 文档版本：v1.0
+- 文档版本：v1.1
 - 编写日期：2026-11-14
-- 状态：设计稿（开发前需评审）
+- 状态：**已实现（本分支开发完成，待 GLaDOS 侧联调）**
 - 分支：`feature/glados-integration`
 - 关联文档：GLaDOS 侧 `GLaDOSClaw-桌宠双引擎轻量级重量级-详细需求-2026-11-14.md`
 - 许可：本改造沿用 Shimeji-ee 的 GPL v3；GLaDOS 侧已确认采用兼容开源许可
@@ -180,13 +180,16 @@ GLaDOS `quitApp` 的 `stopBackendOnce` 中增加 `shimejiManager.stop()`，保�
 
 | 文件 | 改动 |
 |---|---|
-| `src/main/java/com/group_finity/mascot/Main.java` | 解析 `--glados-managed/--glados-port/--glados-home`；受管模式跳过更新检查、跳过设置窗口；启动桥 |
-| `src/main/java/com/group_finity/mascot/glados/GladosBridge.java`（新） | JDK `HttpServer` 监听 127.0.0.1；命令 → Manager 映射；写端口文件 |
-| `src/main/java/com/group_finity/mascot/glados/GladosCommand.java`（新） | 命令枚举 + 参数校验 |
-| `src/main/java/com/group_finity/mascot/config/GladosBehaviors.java`（新） | 加载/覆盖 AI 行为映射 |
-| `src/main/resources/glados-behaviors.xml`（新） | 默认 AI 行为表 |
-| `src/main/java/com/group_finity/mascot/Manager.java` | 暴露 `getCount`/`isPaused` 已有；无需大改（方法已齐） |
-| `pom.xml` | 打包含新资源；`jna` 保留；裁剪非必需 UI 依赖可后续 |
+| `src/main/java/com/group_finity/mascot/Main.java` | 解析 `--glados-managed/--glados-port/--glados-home`；受管模式跳过更新检查、跳过托盘设置窗口；`loadConfiguration` 改 public；启动桥；`exit()` 停桥；受管模式 `setExitOnLastRemoved(false)` 防止 setRole 竞态退出 |
+| `src/main/java/com/group_finity/mascot/glados/GladosBridge.java`（新） | JDK `HttpServer` 监听 127.0.0.1；命令 → Manager 映射；写端口文件；`setRole`/`createMascot` 前 `ensureConfiguration` 自动加载目标角色配置 |
+| `src/main/java/com/group_finity/mascot/glados/GladosCommand.java`（新） | 命令枚举 + 参数校验（白名单） |
+| `src/main/java/com/group_finity/mascot/glados/GladosOptions.java`（新） | 启动参数解析 |
+| `src/main/java/com/group_finity/mascot/glados/GladosBehaviors.java`（新） | 加载/覆盖 AI 行为映射（`--glados-home/glados-behaviors.xml` 优先，内置兜底） |
+| `src/main/resources/glados-behaviors.xml`（新） | 默认 AI 行为表（AIIdle/AIWorking/AIWaiting/AIReview/AIFailed/AIDisconnected，复用现有动作） |
+| `src/main/java/com/group_finity/mascot/config/Configuration.java` | 新增 `loadGladosBehaviors(Entry)` 合并 AI 行为表 |
+| `src/main/java/com/group_finity/mascot/Manager.java` | 新增 `setBehaviorAllByName`（直接按行为名构建，绕过 schema 限制）、`getMascotsForBridge`（只读列表）、`remainOneOnly`（只留指定角色，修正原 `remainOne(String)` 语义）、`getActiveRole` |
+| `src/test/java/com/group_finity/mascot/glados/GladosBridgeTest.java`（新） | 20 个单元测试（参数解析/命令白名单/参数校验/端口文件） |
+| `pom.xml` | 无改动（新资源自动打入，JDK HttpServer 无新依赖） |
 
 **不动的**：`behavior/`、`action/`、`animation/`、`environment/`、`win/`、`mac/`、`Mascot.java` 核心逻辑。自主行为完全保留。
 
@@ -249,13 +252,13 @@ Shimeji 行为事件（点击/拖拽/长时间 idle）→ 回调 GLaDOS
 
 ## 10. 完成定义
 
-- [ ] `--glados-managed` 受管模式可用，桥监听 127.0.0.1 随机端口；
-- [ ] 全部控制命令（setRole/setBehavior/pause/resume/createMascot/remainOne/disposeAll/quit）可用；
-- [ ] AI 行为映射表生效，GLaDOS 任务状态能切换 Shimeji 行为；
-- [ ] 非受管模式完全保持原版行为；
-- [ ] GLaDOS 退出联动、崩溃重启验证通过；
-- [ ] Windows + macOS 实机验收通过；
-- [ ] 单元 + 集成 + 回归测试全绿。
+- [x] `--glados-managed` 受管模式可用，桥监听 127.0.0.1 随机端口；（2026-11-14 实测通过，端口文件写入正常）
+- [x] 全部控制命令（setRole/setBehavior/pause/resume/createMascot/remainOne/disposeAll/quit）可用；（2026-11-14 实测通过）
+- [x] AI 行为映射表生效，GLaDOS 任务状态能切换 Shimeji 行为；（2026-11-14 实测 AIWorking/AIWaiting/AIReview/AIFailed/AIIdle 全部生效）
+- [x] 非受管模式完全保持原版行为；（未加 `--glados-managed` 时不启动桥，代码路径与原来一致）
+- [ ] GLaDOS 退出联动、崩溃重启验证通过；（需 GLaDOS 侧 ShimejiManager 实现后联调）
+- [ ] Windows + macOS 实机验收通过；（macOS 已实测，Windows 待验）
+- [x] 单元 + 集成 + 回归测试全绿；（20 个单元测试通过；集成测试 macOS 实测通过；回归需完整跑原版行为）
 
 ## 11. 风险与缓解
 

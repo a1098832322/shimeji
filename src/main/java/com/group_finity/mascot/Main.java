@@ -5,6 +5,9 @@ import com.group_finity.mascot.config.Entry;
 import com.group_finity.mascot.exception.BehaviorInstantiationException;
 import com.group_finity.mascot.exception.CantBeAliveException;
 import com.group_finity.mascot.exception.ConfigurationException;
+import com.group_finity.mascot.glados.GladosBehaviors;
+import com.group_finity.mascot.glados.GladosBridge;
+import com.group_finity.mascot.glados.GladosOptions;
 import com.group_finity.mascot.imagesetchooser.ImageSetChooser;
 import com.group_finity.mascot.sound.Sounds;
 import com.group_finity.mascot.win.WindowsInteractiveWindowForm;
@@ -63,6 +66,12 @@ public class Main {
 
     private JDialog form;
 
+    /** GLaDOS 启动参数（--glados-managed 等）。 */
+    private GladosOptions gladosOptions = new GladosOptions(false, 0, null);
+
+    /** GLaDOS 外部控制桥；仅受管模式启动。 */
+    private GladosBridge gladosBridge;
+
     public static Main getInstance() {
         return instance;
     }
@@ -79,26 +88,33 @@ public class Main {
         System.setProperty("sun.java2d.uiScale.enabled", "true");
         System.setProperty("sun.java2d.dpiaware", "true");
         
+        // 解析 GLaDOS 启动参数（必须在 run() 之前，供受管模式判断）
+        getInstance().gladosOptions = GladosOptions.parse(args);
+
         try {
-            //检测更新
-            new Thread(() -> {
-                try {
-                    if (UpdateChecker.checkUpdate(
-                            UpdateChecker.CHECK_UPDATE_TYPE
-                                    .MANUAL) != null) {
-                        //显示更新提示框
-                        new DownloadDialog();
+            //检测更新（受管模式跳过：由 GLaDOS 管理生命周期，不自行更新）
+            if (!getInstance().gladosOptions.isManaged()) {
+                new Thread(() -> {
+                    try {
+                        if (UpdateChecker.checkUpdate(
+                                UpdateChecker.CHECK_UPDATE_TYPE
+                                        .MANUAL) != null) {
+                            //显示更新提示框
+                            new DownloadDialog();
+                        }
+                    } catch (java.net.SocketTimeoutException e) {
+                        log.warn("检测更新时连接超时，已跳过更新检查", e);
+                    } catch (java.net.ConnectException e) {
+                        log.warn("检测更新时无法连接到服务器，已跳过更新检查", e);
+                    } catch (IOException e) {
+                        log.warn("检测更新时发生网络错误，已跳过更新检查: {}", e.getMessage(), e);
+                    } catch (Exception e) {
+                        log.error("检测更新时发生未知错误！", e);
                     }
-                } catch (java.net.SocketTimeoutException e) {
-                    log.warn("检测更新时连接超时，已跳过更新检查", e);
-                } catch (java.net.ConnectException e) {
-                    log.warn("检测更新时无法连接到服务器，已跳过更新检查", e);
-                } catch (IOException e) {
-                    log.warn("检测更新时发生网络错误，已跳过更新检查: {}", e.getMessage(), e);
-                } catch (Exception e) {
-                    log.error("检测更新时发生未知错误！", e);
-                }
-            }).start();
+                }).start();
+            } else {
+                log.info("GLaDOS managed mode: skip online update check");
+            }
 
             //实例化程序主体
             getInstance().run();
@@ -179,8 +195,20 @@ public class Main {
             exit();
         }
 
-        // 创建底部托盘图标
-        createTrayIcon();
+        // 合并 GLaDOS AI 行为映射表（受管模式才需要；非受管模式保持原版行为树）
+        if (gladosOptions.isManaged()) {
+            for (String imageSet : imageSets) {
+                Configuration config = configurations.get(imageSet);
+                if (config != null) {
+                    GladosBehaviors.loadInto(config, gladosOptions.getHome());
+                }
+            }
+        }
+
+        // 创建底部托盘图标（受管模式跳过：不显示设置窗口/托盘菜单入口）
+        if (!gladosOptions.isManaged()) {
+            createTrayIcon();
+        }
 
         // 创建第一个角色
         for (String imageSet : imageSets) {
@@ -188,6 +216,17 @@ public class Main {
         }
 
         getManager().start();
+
+        // 受管模式：启动 GLaDOS 外部控制桥
+        if (gladosOptions.isManaged()) {
+            // 受管模式下禁止"清空角色即退出"：setRole 会先 disposeAll 再 createMascot，
+            // 若 tick 线程在中间检测到 0 角色会误触发退出。退出统一由 quit 命令控制。
+            getManager().setExitOnLastRemoved(false);
+            gladosBridge = new GladosBridge(gladosOptions, manager);
+            gladosBridge.start();
+            log.info("GLaDOS managed mode enabled (port={}, home={})",
+                    gladosOptions.getPort(), gladosOptions.getHome());
+        }
     }
 
 
@@ -212,7 +251,15 @@ public class Main {
      * @param imageSet
      * @return
      */
-    private boolean loadConfiguration(String imageSet) {
+    /**
+     * 加载指定形象的动作/行为配置（含 GLaDOS AI 行为映射）。
+     * <p>
+     * 受管模式下由 GladosBridge 在切换角色前调用，确保目标角色配置已加载。
+     *
+     * @param imageSet 完整形象路径
+     * @return 是否加载成功
+     */
+    public boolean loadConfiguration(String imageSet) {
         try {
             String actionsFile = OriginEngineFix.getInstance()
                     .getBASE_ENVIRONMENT_PATH() + "actions.xml";
@@ -880,6 +927,13 @@ public class Main {
         return this.manager;
     }
 
+    /**
+     * 获取 GLaDOS 控制桥（仅受管模式非 null）。
+     */
+    public GladosBridge getGladosBridge() {
+        return gladosBridge;
+    }
+
     public Platform getPlatform() {
         return platform;
     }
@@ -893,6 +947,11 @@ public class Main {
     }
 
     public void exit() {
+        // 先停桥，避免 GLaDOS 侧收到端口文件后连不上
+        if (gladosBridge != null) {
+            gladosBridge.stop();
+            gladosBridge = null;
+        }
         this.getManager().disposeAll();
         this.getManager().stop();
 
