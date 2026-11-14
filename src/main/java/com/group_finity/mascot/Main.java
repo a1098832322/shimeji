@@ -139,6 +139,12 @@ public class Main {
         //load setting
         properties = OriginEngineFix.getInstance().getInstanceSettingProp();
 
+        // GLaDOS 托管模式：禁止自主增殖（SplitIntoTwo / PullUpShimeji）。
+        if (gladosOptions.isManaged()) {
+            properties.setProperty("Breeding", "false");
+            log.info("GLaDOS managed mode: disable autonomous breeding");
+        }
+
         // load langauges
         try {
             loadLanguageProp();

@@ -61,5 +61,17 @@
 			</NextBehaviorList>
 		</Behavior>
 
+		<!--
+			GLaDOS 托管：禁用自主增殖行为。
+			与 Main.run() 里按托管状态设置 Breeding=false 构成双保险：
+			- 本文件 Frequency=0  → 不被自主行为树选中（连分裂动作都不播）
+			- Breeding=false      → 即使被显式构建也不会产生新角色
+			注意：GLaDOS 主动下发的 createMascot 命令不受影响。
+			本文件仅在托管模式下加载，用户直接运行不会读到这些覆盖。
+			设计文档：docs/glados-managed-constraints-design.md §4.2
+		-->
+		<Behavior Name="SplitIntoTwo" Frequency="0" Hidden="true" Action="Sit" />
+		<Behavior Name="PullUpShimeji" Frequency="0" Hidden="true" Action="Sit" />
+
 	</BehaviorList>
 </Mascot>
