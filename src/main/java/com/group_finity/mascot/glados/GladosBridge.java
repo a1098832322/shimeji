@@ -1,10 +1,12 @@
 package com.group_finity.mascot.glados;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.group_finity.mascot.Main;
 import com.group_finity.mascot.Manager;
 import com.group_finity.mascot.Mascot;
+import java.awt.Rectangle;
 import com.group_finity.mascot.behavior.Behavior;
 import com.group_finity.mascot.config.Configuration;
 import com.wishes.fix.OriginEngineFix;
@@ -134,6 +136,16 @@ public final class GladosBridge {
     // ------------------------------------------------------------------
 
     private void handleStatus(HttpExchange exchange) throws IOException {
+        respond(exchange, 200, buildStatusBody().toJSONString());
+    }
+
+    /**
+     * 组装 /status 响应体。
+     * <p>
+     * 拆出来便于单测：不依赖 HTTP 层。mascots 数组给 GLaDOS 上报
+     * 每个角色的屏幕坐标，用于在角色头上画回复气泡。
+     */
+    JSONObject buildStatusBody() {
         JSONObject body = new JSONObject();
         body.put("role", shortRole(manager.getActiveRole()));
         body.put("count", manager.getCount());
@@ -141,7 +153,18 @@ public final class GladosBridge {
         body.put("behavior", currentBehavior());
         body.put("managed", true);
         body.put("version", com.wishes.constant.Constant.CURRENT_VERSION);
-        respond(exchange, 200, body.toJSONString());
+        JSONArray mascots = new JSONArray();
+        for (Mascot mascot : manager.getMascotsForBridge()) {
+            JSONObject entry = new JSONObject();
+            Rectangle bounds = mascot.getBounds();
+            entry.put("x", bounds.x);
+            entry.put("y", bounds.y);
+            entry.put("width", bounds.width);
+            entry.put("height", bounds.height);
+            mascots.add(entry);
+        }
+        body.put("mascots", mascots);
+        return body;
     }
 
     private void handleControl(HttpExchange exchange) throws IOException {
