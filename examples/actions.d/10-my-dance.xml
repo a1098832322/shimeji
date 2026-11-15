@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  示例 A：零新图的组合动作（FR-12 AC-12-2）
+
+  只引用 conf/actions.xml 里已有的 Stand / Sit 动作，
+  不需要新增任何 PNG，也不需要写 Java。
+  配套行为见 ../behaviors.d/10-my-dance.xml。
+
+  片段根节点必须是 <Mascot>（与主动作文件一致），
+  内部可以只含一个 <ActionList>。
+-->
+<Mascot>
+    <ActionList>
+        <Action Name="MyDance" Type="Sequence" Loop="true">
+            <ActionReference Name="Stand" Duration="300" />
+            <ActionReference Name="Sit"   Duration="300" />
+            <ActionReference Name="Stand" Duration="300" />
+        </Action>
+    </ActionList>
+</Mascot>

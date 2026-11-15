@@ -86,6 +86,37 @@ public class AnimationBuilder
         
     }
 
+    /**
+     * 把 Pose 的 {@code Image} 属性解析为实际文件路径。
+     * <p>
+     * 需求文档：docs/action-authoring-extensibility-requirements.md FR-06 / FR-08。
+     * 抽成 public static 是为了让配置加载期的缺图预检复用同一套路径规则，
+     * 避免「预检说存在、运行时说不存在」或反之。相对子目录（如 {@code sub/foo.png}）
+     * 由 {@link java.nio.file.Path#resolve} 自然支持。
+     */
+    public static Path resolveImagePath( final String imageSet, final String imageAttr )
+    {
+        String cleanPath = imageAttr;
+        while( cleanPath.startsWith( "/" ) || cleanPath.startsWith( "\\" ) )
+        {
+            cleanPath = cleanPath.substring( 1 );
+        }
+
+        final Path basePath = Constant.isDevEnvironment
+                ? Paths.get( ".", "src", "main", "resources", "img" )
+                : Paths.get( ".", "img" );
+
+        String imageSetName = imageSet;
+        if( imageSet.contains( ":" ) || imageSet.startsWith( File.separator ) || imageSet.startsWith( "/" ) )
+        {
+            imageSetName = Paths.get( imageSet ).getFileName( ).toString( );
+        }
+
+        final String fullPath = basePath.resolve( imageSetName + File.separator + cleanPath ).toString( );
+        final File imageFile = new File( fullPath );
+        return imageFile.exists( ) ? imageFile.toPath( ) : Paths.get( fullPath );
+    }
+
     private Pose loadPose( final Entry frameNode ) throws IOException
     {
         // 处理图片路径
@@ -98,87 +129,12 @@ public class AnimationBuilder
         
         if( imageAttr != null )
         {
-            // 处理路径：去除开头的 / 或 \，然后拼接 imageSet
-            String cleanPath = imageAttr;
-            while( cleanPath.startsWith( "/" ) || cleanPath.startsWith( "\\" ) )
-            {
-                cleanPath = cleanPath.substring( 1 );
-            }
-            
-            // 根据开发/生产环境构建基础路径
-            Path basePath;
-            if( Constant.isDevEnvironment )
-            {
-                basePath = Paths.get( ".", "src", "main", "resources", "img" );
-            }
-            else
-            {
-                basePath = Paths.get( ".", "img" );
-            }
-            
-            // 如果 imageSet 是绝对路径，提取目录名
-            String imageSetName = imageSet;
-            if( imageSet.contains( ":" ) || imageSet.startsWith( File.separator ) || imageSet.startsWith( "/" ) )
-            {
-                // 提取最后一层目录名
-                Path imageSetPath = Paths.get( imageSet );
-                imageSetName = imageSetPath.getFileName( ).toString( );
-            }
-            
-            String fullPath = basePath.resolve( imageSetName + File.separator + cleanPath ).toString( );
-            
-            File imageFile = new File( fullPath );
-            if( imageFile.exists( ) )
-            {
-                imageText = imageFile.toPath( );
-            }
-            else
-            {
-                // 尝试在 img 目录下查找
-                imageText = Paths.get( fullPath );
-            }
+            imageText = resolveImagePath( imageSet, imageAttr );
         }
-        
+
         if( imageRightAttr != null )
         {
-            // 处理路径：去除开头的 / 或 \，然后拼接 imageSet
-            String cleanPath = imageRightAttr;
-            while( cleanPath.startsWith( "/" ) || cleanPath.startsWith( "\\" ) )
-            {
-                cleanPath = cleanPath.substring( 1 );
-            }
-            
-            // 根据开发/生产环境构建基础路径
-            Path basePath;
-            if( Constant.isDevEnvironment )
-            {
-                basePath = Paths.get( ".", "src", "main", "resources", "img" );
-            }
-            else
-            {
-                basePath = Paths.get( ".", "img" );
-            }
-            
-            // 如果 imageSet 是绝对路径，提取目录名
-            String imageSetName = imageSet;
-            if( imageSet.contains( ":" ) || imageSet.startsWith( File.separator ) || imageSet.startsWith( "/" ) )
-            {
-                // 提取最后一层目录名
-                Path imageSetPath = Paths.get( imageSet );
-                imageSetName = imageSetPath.getFileName( ).toString( );
-            }
-            
-            String fullPath = basePath.resolve( imageSetName + File.separator + cleanPath ).toString( );
-            
-            File imageFile = new File( fullPath );
-            if( imageFile.exists( ) )
-            {
-                imageRightText = imageFile.toPath( );
-            }
-            else
-            {
-                imageRightText = Paths.get( fullPath );
-            }
+            imageRightText = resolveImagePath( imageSet, imageRightAttr );
         }
         final String anchorText = frameNode.getAttribute( schema.getString( "ImageAnchor" ) ) != null ? frameNode.getAttribute( schema.getString( "ImageAnchor" ) ) : null;
         final String moveText = frameNode.getAttribute( schema.getString( "Velocity" ) );

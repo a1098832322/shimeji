@@ -39,7 +39,7 @@ import java.util.concurrent.Executors;
  *   <li>监听 127.0.0.1 随机端口（{@code --glados-port 0}）；</li>
  *   <li>{@code GET /status} 查询状态；</li>
  *   <li>{@code POST /control} 执行白名单命令（setRole/setBehavior/pause/resume/
- *       createMascot/remainOne/disposeAll/quit）；</li>
+ *       createMascot/remainOne/disposeAll/reload/quit）；</li>
  *   <li>把实际监听端口写入 {@code --glados-home/glados-bridge.port}。</li>
  * </ul>
  * 桥使用独立线程池，不触碰 Swing EDT。
@@ -241,6 +241,8 @@ public final class GladosBridge {
             case DISPOSE_ALL:
                 manager.disposeAll();
                 return okJson();
+            case RELOAD:
+                return reload();
             case QUIT:
                 // 异步优雅退出：先响应，再 disposeAll + exit
                 new Thread(() -> {
@@ -316,6 +318,17 @@ public final class GladosBridge {
         }
         manager.remainOneOnly(full);
         return okJson();
+    }
+
+    /**
+     * FR-03：显式重载动作/行为配置。
+     * 失败时 {@code Main.reloadConfigurations()} 已回滚图片缓存并保留旧配置，
+     * 这里把原因以 error JSON 返回给调用方。
+     */
+    // 包私有：便于 headless 单测直接验证命令入口，不启动 HTTP 服务
+    String reload() {
+        String error = Main.getInstance().reloadConfigurations();
+        return error == null ? okJson() : errorJson(error);
     }
 
     // ------------------------------------------------------------------

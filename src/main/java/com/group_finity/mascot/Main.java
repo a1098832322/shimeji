@@ -1,6 +1,7 @@
 package com.group_finity.mascot;
 
 import com.group_finity.mascot.config.Configuration;
+import com.group_finity.mascot.config.ConfigurationFiles;
 import com.group_finity.mascot.config.Entry;
 import com.group_finity.mascot.exception.BehaviorInstantiationException;
 import com.group_finity.mascot.exception.CantBeAliveException;
@@ -9,6 +10,8 @@ import com.group_finity.mascot.glados.GladosBehaviors;
 import com.group_finity.mascot.glados.GladosEventReporter;
 import com.group_finity.mascot.glados.GladosBridge;
 import com.group_finity.mascot.glados.GladosOptions;
+import com.group_finity.mascot.image.ImagePair;
+import com.group_finity.mascot.image.ImagePairs;
 import com.group_finity.mascot.imagesetchooser.ImageSetChooser;
 import com.group_finity.mascot.sound.Sounds;
 import com.group_finity.mascot.win.WindowsInteractiveWindowForm;
@@ -269,59 +272,64 @@ public class Main {
      * @param imageSet 完整形象路径
      * @return 是否加载成功
      */
+    /** 三级路径回退的解析结果；与改造前的 {@code loadConfiguration} 逻辑保持一致。 */
+    private static final class ConfigPaths {
+        final String actionsFile;
+        final String behaviorsFile;
+        final String effectiveImageSet;
+
+        ConfigPaths(String actionsFile, String behaviorsFile, String effectiveImageSet) {
+            this.actionsFile = actionsFile;
+            this.behaviorsFile = behaviorsFile;
+            this.effectiveImageSet = effectiveImageSet;
+        }
+    }
+
+    /**
+     * 解析动作/行为文件路径（全局 conf 与皮肤级 conf 的三级回退）。
+     * 抽出来是为了让启动加载与显式重载（FR-03）走完全相同的路径规则。
+     */
+    private ConfigPaths resolveConfigPaths(String imageSet) {
+        final String baseEnv = OriginEngineFix.getInstance().getBASE_ENVIRONMENT_PATH();
+        final String baseImg = OriginEngineFix.getInstance().getBASE_IMG_PATH();
+
+        String effective = imageSet;
+        String actionsFile = baseEnv + "actions.xml";
+        if (new File(baseEnv + imageSet + "/actions.xml").exists()) {
+            effective = baseEnv + imageSet;
+            actionsFile = effective + "/actions.xml";
+        } else if (new File(baseImg + imageSet + "/conf/actions.xml").exists()) {
+            effective = baseImg + imageSet;
+            actionsFile = effective + "/conf/actions.xml";
+        } else {
+            effective = FormatUtils.formatImagePath(imageSet);
+        }
+
+        String behaviorsFile = baseEnv + "behaviors.xml";
+        if (new File(baseEnv + effective + "/behaviors.xml").exists()) {
+            behaviorsFile = baseEnv + effective + "/behaviors.xml";
+        } else if (new File(baseImg + effective + "/conf/behaviors.xml").exists()) {
+            behaviorsFile = baseImg + effective + "/conf/behaviors.xml";
+        }
+        return new ConfigPaths(actionsFile, behaviorsFile, effective);
+    }
+
     public boolean loadConfiguration(String imageSet) {
         try {
-            String actionsFile = OriginEngineFix.getInstance()
-                    .getBASE_ENVIRONMENT_PATH() + "actions.xml";
-            if (new File(OriginEngineFix.getInstance()
-                    .getBASE_ENVIRONMENT_PATH() + imageSet + "/actions.xml").exists()) {
-                imageSet = OriginEngineFix.getInstance()
-                        .getBASE_ENVIRONMENT_PATH() + imageSet;
-                actionsFile = imageSet + "/actions.xml";
-            } else if (new File(OriginEngineFix.getInstance().getBASE_IMG_PATH() + imageSet + "/conf/actions.xml").exists()) {
-                imageSet = OriginEngineFix.getInstance().getBASE_IMG_PATH() + imageSet;
-                actionsFile = imageSet + "/conf/actions.xml";
-            } else {
-                imageSet = FormatUtils.formatImagePath(imageSet);
-            }
+            final ConfigPaths paths = resolveConfigPaths(imageSet);
+            log.info("{} Read Action File ({})", paths.effectiveImageSet, paths.actionsFile);
+            log.info("{} Read Behavior File ({})", paths.effectiveImageSet, paths.behaviorsFile);
 
-            log.info("{} Read Action File ({})", imageSet, actionsFile);
+            // FR-01：主文件 + actions.d/*.xml + behaviors.d/*.xml，全部加载完才统一 validate
+            ConfigurationFiles.Result result = ConfigurationFiles.build(
+                    paths.actionsFile, paths.behaviorsFile, paths.effectiveImageSet);
 
-            final Document actions = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(
-                    new FileInputStream(new File(actionsFile)));
+            configurations.put(paths.effectiveImageSet, result.getConfiguration());
 
-            Configuration configuration = new Configuration();
-            configuration.load(new Entry(actions.getDocumentElement()), imageSet);
-
-            String behaviorsFile = OriginEngineFix.getInstance()
-                    .getBASE_ENVIRONMENT_PATH() + "behaviors.xml";
-            if (new File(OriginEngineFix.getInstance()
-                    .getBASE_ENVIRONMENT_PATH() + imageSet + "/behaviors.xml").exists()) {
-                behaviorsFile = OriginEngineFix.getInstance()
-                        .getBASE_ENVIRONMENT_PATH() + imageSet + "/behaviors.xml";
-            } else if (new File(OriginEngineFix.getInstance().getBASE_IMG_PATH() + imageSet + "/conf/behaviors.xml").exists()) {
-                behaviorsFile = OriginEngineFix.getInstance().getBASE_IMG_PATH() + imageSet + "/conf/behaviors.xml";
-            }
-
-            log.info("{} Read Behavior File ({})", imageSet, behaviorsFile);
-
-            final Document behaviors = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(
-                    new FileInputStream(new File(behaviorsFile)));
-
-            configuration.load(new Entry(behaviors.getDocumentElement()), imageSet);
-
-            configuration.validate();
-
-            configurations.put(imageSet, configuration);
-
-            // born mascot bit goes here...
-            for (final Entry list : new Entry(actions.getDocumentElement()).selectChildren("ActionList")) {
-                for (final Entry node : list.selectChildren("Action")) {
-                    if (node.getAttributes().containsKey("BornMascot")) {
-                        if (!configurations.containsKey(node.getAttribute("BornMascot"))) {
-                            loadConfiguration(node.getAttribute("BornMascot"));
-                        }
-                    }
+            // born mascot bit goes here...（FR-01：动作包片段里声明的 BornMascot 同样生效）
+            for (String born : result.getBornMascots()) {
+                if (!configurations.containsKey(born)) {
+                    loadConfiguration(born);
                 }
             }
 
@@ -931,6 +939,74 @@ public class Main {
     public Configuration getConfiguration(String imageSet) {
         Configuration conf = configurations.get(imageSet);
         return conf;
+    }
+
+    /**
+     * 显式重载所有已加载角色的动作/行为配置（FR-03 / FR-04）。
+     * <p>
+     * 需求文档：docs/action-authoring-extensibility-requirements.md §5.1
+     * <p>
+     * 关键点：图片是在 {@code AnimationBuilder} 构造（即配置构建）时预加载的，
+     * 且 {@code ImagePairLoader.load} 对已缓存路径会直接短路返回。因此必须
+     * <b>先清缓存、再构建</b>，否则新增或替换的 PNG 不会生效（D-3）。
+     * 为保证 AC-03-5「失败保留旧配置可用」，先取缓存快照，任一环节失败即整体回滚；
+     * 旧 {@code configurations} 与现有角色在此之前完全没有被触碰。
+     * <p>
+     * 不读语言配置、不写 {@code settings.properties}、不弹任何窗口（AC-03-4）。
+     *
+     * @return {@code null} 表示成功；否则为面向调用方的错误描述
+     */
+    public String reloadConfigurations() {
+        if (imageSets.isEmpty()) {
+            return "no image set loaded";
+        }
+        final Map<String, ImagePair> snapshot = ImagePairs.snapshot();
+        final Map<String, Configuration> fresh = new LinkedHashMap<>();
+
+        try {
+            for (String imageSet : imageSets) {
+                log.info("Reload: clearing cached images for {}", imageSet);
+                ImagePairs.clearForImageSet(imageSet);
+            }
+
+            for (String imageSet : imageSets) {
+                final ConfigPaths paths = resolveConfigPaths(imageSet);
+                final ConfigurationFiles.Result result = ConfigurationFiles.build(
+                        paths.actionsFile, paths.behaviorsFile, paths.effectiveImageSet);
+
+                // 托管模式的 AI 行为表必须每次重载后重新合并，
+                // 否则 glados-behaviors.xml 的 Frequency=0 禁增殖覆盖会丢失（NFR-02）
+                if (gladosOptions.isManaged()) {
+                    GladosBehaviors.loadInto(result.getConfiguration(), gladosOptions.getHome());
+                }
+
+                // 兼容 createMascot(imageSet) 与皮肤级 effectiveImageSet 两种取法
+                fresh.put(imageSet, result.getConfiguration());
+                if (!paths.effectiveImageSet.equals(imageSet)) {
+                    fresh.put(paths.effectiveImageSet, result.getConfiguration());
+                }
+            }
+        } catch (final Exception e) {
+            ImagePairs.restore(snapshot);
+            log.error("Reload failed, previous configuration and image cache restored: {}", e.toString(), e);
+            return "failed to reload configuration: " + e.getMessage();
+        }
+
+        configurations.putAll(fresh);
+
+        // 重建角色时禁止「清空即退出」（与 refreshLanguage / 托管启动的既有保护一致）
+        final boolean exitOnLast = getManager().isExitOnLastRemoved();
+        getManager().setExitOnLastRemoved(false);
+        try {
+            getManager().disposeAll();
+            for (String imageSet : imageSets) {
+                createMascot(imageSet);
+            }
+        } finally {
+            getManager().setExitOnLastRemoved(exitOnLast);
+        }
+        log.info("Reload: applied configuration for {} image set(s)", imageSets.size());
+        return null;
     }
 
     private Manager getManager() {

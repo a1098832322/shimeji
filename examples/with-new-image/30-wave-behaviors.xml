@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- 示例 B 的配套行为声明；放到 behaviors.d/ 目录下才会生效。 -->
+<Mascot>
+    <BehaviorList>
+        <Behavior Name="MyWave" Frequency="0" Hidden="true" />
+    </BehaviorList>
+</Mascot>

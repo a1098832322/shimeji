@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  示例 B：带新图片的帧动作（FR-12 AC-12-2）
+
+  与示例 A 不同，这个动作需要两张新 PNG：
+    img/<角色>/wave1.png
+    img/<角色>/wave2.png
+
+  图片规格建议：
+    - 128 x 128 像素、带透明通道的 PNG（与现有 46 张 shimeN.png 一致）；
+    - 只需画「朝左」的一个朝向，不写 ImageRight 时程序会自动水平翻转
+      生成朝右版本（ImagePairLoader.java:33-34）；若左右姿态不对称，
+      可显式写 ImageRight="/wave1-right.png"；
+    - ImageAnchor="64,128" 是图片上的锚点（底部中心），
+      换成其他尺寸时必须同步修改这个坐标；
+    - Velocity="0,0" 表示不位移，Duration 单位是 tick。
+
+  片段根节点必须是 <Mascot>。文件名 30- 只是排序用，
+  与 actions.d 下其他片段按字典序依次加载。
+-->
+<Mascot>
+    <ActionList>
+        <Action Name="MyWave" Type="Stay" BorderType="Floor">
+            <Animation>
+                <Pose Image="/wave1.png" ImageAnchor="64,128" Velocity="0,0" Duration="120" />
+                <Pose Image="/wave2.png" ImageAnchor="64,128" Velocity="0,0" Duration="120" />
+            </Animation>
+        </Action>
+    </ActionList>
+</Mascot>

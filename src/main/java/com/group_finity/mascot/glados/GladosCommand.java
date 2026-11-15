@@ -23,6 +23,8 @@ public enum GladosCommand {
     CREATE_MASCOT("createMascot", "role"),
     REMAIN_ONE("remainOne", "role"),
     DISPOSE_ALL("disposeAll"),
+    /** FR-03：显式重载动作/行为配置（不重启、不弹框）。 */
+    RELOAD("reload"),
     QUIT("quit");
 
     private final String wireName;

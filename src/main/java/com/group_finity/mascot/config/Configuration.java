@@ -35,13 +35,31 @@ public class Configuration
     private static final Logger log = LoggerFactory.getLogger( Configuration.class.getName( ) );
     private final Map<String, String> constants = new LinkedHashMap<String, String>( 2 );
     private final Map<String, ActionBuilder> actionBuilders = new LinkedHashMap<String, ActionBuilder>( );
+    /** 每个 Action 的来源文件，用于区分「跨文件覆盖」与「单文件内重复」（FR-02）。 */
+    private final Map<String, String> actionSources = new LinkedHashMap<String, String>( );
     private final Map<String, BehaviorBuilder> behaviorBuilders = new LinkedHashMap<String, BehaviorBuilder>( );
     private final Map<String, String> information = new LinkedHashMap<String, String>( 8 );
     private ResourceBundle schema;
 
     public void load( final Entry configurationNode, final String imageSet ) throws IOException, ConfigurationException
     {
-        
+        load( configurationNode, imageSet, "<unnamed>" );
+    }
+
+    /**
+     * 加载一份动作/行为定义。
+     * <p>
+     * 需求文档：docs/action-authoring-extensibility-requirements.md FR-02
+     * <p>
+     * {@code source} 仅用于诊断与冲突判定：同名 Action 来自<b>不同</b>来源文件时按
+     * 「后写覆盖前写」处理（与 Behavior 的 put 语义对齐），来自<b>同一</b>文件时仍视为
+     * 笔误并抛异常。这样既支持「官方基础包 + 用户覆盖包」，又不会掩盖单文件内的重复声明。
+     *
+     * @param source 本份定义的文件路径，建议使用绝对路径
+     */
+    public void load( final Entry configurationNode, final String imageSet, final String source ) throws IOException, ConfigurationException
+    {
+
         // prepare schema
         ResourceBundle.Control utf8Control = new Utf8ResourceBundleControl( false );
         Locale locale;
@@ -72,11 +90,23 @@ public class Configuration
             {
                 final ActionBuilder action = new ActionBuilder( this, node, imageSet );
 
-                if( getActionBuilders( ).containsKey( action.getName( ) ) )
+                final String previousSource = getActionSources( ).get( action.getName( ) );
+                if( previousSource != null )
                 {
-                    throw new ConfigurationException( Main.getInstance( ).getLanguageBundle( ).getProperty( "DuplicateActionErrorMessage" ) + ": " + action.getName( ) );
+                    if( previousSource.equals( source ) )
+                    {
+                        // headless 单测下 languageBundle 可能未初始化，给出可读兜底（FR-08 AC-08-1）
+                        final java.util.Properties bundle = Main.getInstance( ).getLanguageBundle( );
+                        final String prefix = bundle != null
+                                ? bundle.getProperty( "DuplicateActionErrorMessage" )
+                                : "Duplicate action";
+                        throw new ConfigurationException( prefix + ": " + action.getName( ) + " (" + source + ")" );
+                    }
+                    log.warn( "Action '{}' from {} overrides the earlier definition from {}",
+                            action.getName( ), source, previousSource );
                 }
 
+                getActionSources( ).put( action.getName( ), source );
                 getActionBuilders( ).put( action.getName( ), action );
             }
         }
@@ -353,6 +383,17 @@ public class Configuration
     Map<String, ActionBuilder> getActionBuilders( )
     {
         return actionBuilders;
+    }
+
+    private Map<String, String> getActionSources( )
+    {
+        return actionSources;
+    }
+
+    /** FR-02 诊断用：某个 Action 定义来自哪个文件；未声明时返回 {@code null}。 */
+    public String getActionSource( final String name )
+    {
+        return getActionSources( ).get( name );
     }
 
     private Map<String, BehaviorBuilder> getBehaviorBuilders( )

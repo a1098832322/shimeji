@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  示例 A 的配套行为声明。
+
+  Name 与 Action 同名 -> 走默认同名绑定（BehaviorBuilder.java:52），
+  不需要写 Action="MyDance"。
+
+  Frequency="0"  -> isEffective() 直接返回 false，不进自主行为树的加权随机；
+  Hidden="true"  -> 不出现在托盘菜单。
+  但 Configuration.buildBehavior("MyDance") 仍可按名构建，
+  因此 GLaDOS 的 setBehavior 命令可以即时预览它。
+-->
+<Mascot>
+    <BehaviorList>
+        <Behavior Name="MyDance" Frequency="0" Hidden="true" />
+    </BehaviorList>
+</Mascot>
