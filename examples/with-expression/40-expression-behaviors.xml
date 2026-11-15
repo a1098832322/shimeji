@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  示例 C 的配套行为声明：Frequency=0 不进自主随机池，Hidden 不进托盘菜单，
+  只能通过 setBehavior 按名预览。
+-->
+<Mascot>
+    <BehaviorList>
+        <Behavior Name="ExpressionDance" Frequency="0" Hidden="true" />
+    </BehaviorList>
+</Mascot>

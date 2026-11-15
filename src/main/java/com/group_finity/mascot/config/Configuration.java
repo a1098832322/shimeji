@@ -406,6 +406,15 @@ public class Configuration
         return behaviorBuilders.keySet( );
     }
 
+    /**
+     * FR-08 / D-1 诊断接口：按名字取行为构建器，用于断言后继行为列表是否真正被解析。
+     * 仅暴露只读视图，不提供修改入口；不存在时返回 {@code null}。
+     */
+    public BehaviorBuilder getBehaviorBuilder( final String name )
+    {
+        return getBehaviorBuilders( ).get( name );
+    }
+
     public boolean containsInformationKey( String key )
     {
         return information.containsKey( key );

@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -86,20 +87,45 @@ public final class ConfigurationFiles {
      */
     public static Result build(final String actionsFile, final String behaviorsFile, final String imageSet)
             throws IOException, SAXException, ParserConfigurationException, ConfigurationException {
+        return build(actionsFile, behaviorsFile, imageSet, null, null);
+    }
+
+    /**
+     * FR-10：构建「全局基础配置 + 皮肤增量」的合并配置。
+     * <p>
+     * 加载顺序严格为：全局 actions（含其 {@code actions.d/}）→ 皮肤 actions（含其 {@code actions.d/}）
+     * → 全局 behaviors → 皮肤 behaviors。同名 Action 按 FR-02 的「后写覆盖」语义，
+     * 因此优先级为 <b>全局 &lt; 皮肤</b>；托管 AI 行为表由
+     * {@code GladosBehaviors.loadInto()} 在更后面合并，优先级最高（AC-10-2/3）。
+     * <p>
+     * 同一个文件（主文件或片段）只加载一次，避免 base 与 skin 指向同一份全局配置时
+     * 被判成「单文件内重复声明」而抛异常。{@code configurations} map 的 key 由调用方决定，本方法不参与。
+     *
+     * @param baseActionsFile   全局主动作文件；无皮肤增量时传 {@code null}
+     * @param baseBehaviorsFile 全局主行为文件；无皮肤增量时传 {@code null}
+     */
+    public static Result build(final String actionsFile, final String behaviorsFile, final String imageSet,
+                               final String baseActionsFile, final String baseBehaviorsFile)
+            throws IOException, SAXException, ParserConfigurationException, ConfigurationException {
         final Configuration configuration = new Configuration();
         final List<String> sources = new ArrayList<>();
         final List<String> problems = new ArrayList<>();
         final Set<String> bornMascots = new LinkedHashSet<>();
+        final Set<String> seen = new HashSet<>();
 
-        loadInto(configuration, new File(actionsFile), imageSet, sources, problems, bornMascots, true, true);
-        for (File fragment : listFragmentFiles(new File(actionsFile).getParentFile(), ACTIONS_D_DIR)) {
-            loadInto(configuration, fragment, imageSet, sources, problems, bornMascots, false, true);
+        if (baseActionsFile != null) {
+            loadGroup(configuration, baseActionsFile, ACTIONS_D_DIR, imageSet,
+                    sources, problems, bornMascots, seen, true);
         }
+        loadGroup(configuration, actionsFile, ACTIONS_D_DIR, imageSet,
+                sources, problems, bornMascots, seen, true);
 
-        loadInto(configuration, new File(behaviorsFile), imageSet, sources, problems, bornMascots, true, false);
-        for (File fragment : listFragmentFiles(new File(behaviorsFile).getParentFile(), BEHAVIORS_D_DIR)) {
-            loadInto(configuration, fragment, imageSet, sources, problems, bornMascots, false, false);
+        if (baseBehaviorsFile != null) {
+            loadGroup(configuration, baseBehaviorsFile, BEHAVIORS_D_DIR, imageSet,
+                    sources, problems, bornMascots, seen, false);
         }
+        loadGroup(configuration, behaviorsFile, BEHAVIORS_D_DIR, imageSet,
+                sources, problems, bornMascots, seen, false);
 
         if (!problems.isEmpty()) {
             log.warn("Configuration diagnostics ({} issue(s)):\n  {}", problems.size(), String.join("\n  ", problems));
@@ -132,16 +158,33 @@ public final class ConfigurationFiles {
         return Collections.unmodifiableList(Arrays.asList(files));
     }
 
+    /** 加载「一个主文件 + 其动作包目录」，并用 {@code seen} 对已加载文件去重。 */
+    private static void loadGroup(final Configuration configuration, final String mainFile, final String dirName,
+                                  final String imageSet, final List<String> sources, final List<String> problems,
+                                  final Set<String> bornMascots, final Set<String> seen, final boolean isActionSource)
+            throws IOException, SAXException, ParserConfigurationException, ConfigurationException {
+        final File main = new File(mainFile);
+        if (seen.add(main.getAbsolutePath())) {
+            loadInto(configuration, main, imageSet, sources, problems, bornMascots, true, isActionSource);
+        }
+        for (File fragment : listFragmentFiles(main.getParentFile(), dirName)) {
+            if (seen.add(fragment.getAbsolutePath())) {
+                loadInto(configuration, fragment, imageSet, sources, problems, bornMascots, false, isActionSource);
+            }
+        }
+    }
+
     /**
-     * 检测 XML 中「后继行为列表」节点名与 schema 映射是否一致。
+     * 检测 XML 中「后继行为列表」节点名与 schema 映射是否一致（FR-08 AC-08-2）。
      * <p>
-     * 已核实缺陷 D-1：{@code conf/*.xml} 使用 {@code <NextBehavior>}，
-     * 而 {@code schema*.properties} 映射为 {@code NextBehaviorList}，
-     * {@code Entry.selectChildren} 又是精确匹配，导致这些节点不被解析。
-     * 本方法<b>只诊断、不修数据、不改变运行时语义</b>，
-     * 以免在 Q5 决策前擅自改变自主行为分布（NFR-01）。
+     * 缺陷 D-1 曾因 {@code conf/*.xml} 使用 {@code <NextBehavior>}、schema 映射为
+     * {@code NextBehaviorList}、而 {@code Entry.selectChildren} 是精确匹配，导致这些节点被静默丢弃。
+     * 2026-11-15 按 Q5 方案 C 修复：仓库内 XML 已统一为规范名，
+     * 且 {@code BehaviorBuilder} 接受旧写法作为兼容别名。
+     * 因此本方法现在报告的是「建议改名」而非「将被忽略」——仍作为诊断项输出，
+     * 便于第三方配置作者发现自己用了历史写法。
      *
-     * @return 不一致描述列表；为空表示一致
+     * @return 不一致描述列表；为空表示已全部使用规范名
      */
     public static List<String> detectNodeNameMismatch(final Document doc, final ResourceBundle schema) {
         final List<String> problems = new ArrayList<>();
@@ -163,8 +206,8 @@ public final class ConfigurationFiles {
             }
         }
         for (String name : found) {
-            problems.add("node <" + name + "> does not match schema NextBehaviourList=<" + expected
-                    + ">; these nodes will be ignored by BehaviorBuilder");
+            problems.add("node <" + name + "> differs from schema NextBehaviourList=<" + expected
+                    + ">; accepted as a legacy alias by BehaviorBuilder, but renaming is recommended");
         }
         return problems;
     }

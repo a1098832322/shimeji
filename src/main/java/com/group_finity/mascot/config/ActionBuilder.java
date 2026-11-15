@@ -54,7 +54,10 @@ public class ActionBuilder implements IActionBuilder {
                 getParams( ).putAll( actionNode.getAttributes( ) );
                 for( final Entry node : actionNode.selectChildren( schema.getString( "Animation" ) ) )
                 {
-                    getAnimationBuilders( ).add( new AnimationBuilder( schema, node, imageSet ) );
+                    // FR-05/06/08：把 Action 名与属性传给 AnimationBuilder，
+                    // 供帧参数表达式求值与错误信息定位使用
+                    getAnimationBuilders( ).add(
+                            new AnimationBuilder( schema, node, imageSet, name, getParams( ) ) );
                 }
 
                 for( final Entry node : actionNode.getChildren( ) )

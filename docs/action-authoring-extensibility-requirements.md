@@ -1,9 +1,9 @@
 # Shimeji 桌宠动作设计与扩展能力需求文档
 
-- 文档版本：v1.2（M1 开发完成，进度实时回写）
+- 文档版本：v1.3（Q5 决策 + M2 开发完成，进度实时回写）
 - 编写日期：2026-11-15
 - 最后更新：2026-11-15
-- 状态：**M0 + M1 代码与测试完成，仅剩真机 GUI 验收**（进度详见 §13；需求定义与验收标准不变）
+- 状态：**M0 + M1 + M2 代码与测试完成，Q5 已决策、D-1 已修复；待真机 GUI 验收**（进度详见 §13；需求定义与验收标准不变）
 - 适用范围：shimeji 仓库，`feature/glados-integration` 分支
 - 关联文档：
   - `docs/glados-ai-integration-design.md`（GLaDOS AI 集成总设计，§5 AI 行为映射）
@@ -199,7 +199,9 @@ Main.loadConfiguration(imageSet)                       Main.java:272
 - 推导结论：原生自主行为配置里的后继行为列表**不会被解析**，`nextBehaviorBuilders` 为空，
   `nextAdditive` 保持默认 `true`，行为选择退化为纯全局加权随机。
   这需要运行时日志或专项单测复核；**无论结论如何，均须在 FR-08 中加一致性回归测试**。
-- 修复方向不在本文约束范围（改 schema 映射或改 XML 节点名，二选一，且必须回归全部行为配置）。
+- **2026-11-15 已修复**（Q5 方案 C，见 §11.1）：4 份 XML 统一为 `<NextBehaviorList>`，
+  `BehaviorBuilder` 兼容 `<NextBehavior>` 别名，诊断语义从「将被忽略」改为「建议改名」。
+  修复后 `behaviors.xml` 的 7 处后继行为列表首次生效，属**有意的行为变更**（R4），需按 §8.4 对照验收。
 
 **D-2（中）· `Mascot.xsd` 的 Type 枚举过时**
 
@@ -207,6 +209,11 @@ Main.loadConfiguration(imageSet)                       Main.java:272
 而运行时实际支持 `Embedded / Move / Stay / Animate / Sequence / Select`（`ActionBuilder.java:98–136`）。
 运行时 `DocumentBuilderFactory` 并未开启 XSD 校验，因此不影响运行；
 但设计者若在 IDE 里按 XSD 做补全/校验，会得到误报（`Stay/Animate/Sequence` 被判非法）。
+
+- **2026-11-15 已修复（FR-09）**：枚举改为运行时实际支持的 6 种类型；
+  同时放宽 `Pose` 的 `Velocity` / `ImageAnchor` / `Duration` 约束以允许帧参数表达式（FR-05）。
+  **运行时仍不启用 XSD 校验**（保持 NFR-01 的启动行为不变、避免历史配置被判非法），
+  XSD 仅用于 IDE 补全与静态检查；启用方式见 `docs/action-design-guide.md` §7.1。
 
 **D-3（中）· 图片缓存永不失效**
 
@@ -520,7 +527,7 @@ Main.loadConfiguration(imageSet)                       Main.java:272
 | TC-07 | AC-04-1/2 | L4 | 新增 PNG / 替换同名 PNG 后重载，画面更新 |
 | TC-08 | AC-05-1/4 | L1 | 帧参数表达式求值与 132 个既有 Pose 回归 |
 | TC-09 | AC-06-1/4 | L2 | `sub/foo.png` 解析；46 张既有图片解析结果不变 |
-| TC-10 | **AC-08-4** | L2 | 断言 4 份 `conf/*Behavior.xml` 的后继节点名与 `schema.getString("NextBehaviourList")` 一致（**当前预期失败，用于暴露 D-1**） |
+| TC-10 | **AC-08-4** | L2 | 断言 4 份 `conf/*Behavior.xml` 的后继节点名与 `schema.getString("NextBehaviourList")` 一致（D-1 修复后为**绿灯**）；另断言 `<NextBehavior>` 兼容别名仍能被 `BehaviorBuilder` 解析 |
 | TC-11 | AC-08-3 | L2 | 临时构造缺图 Pose，错误信息含完整路径与 Action / Pose 定位 |
 | TC-12 | AC-09-1 | L2 | XSD 的 Type 枚举集合等于运行时 6 种类型 |
 | TC-13 | AC-10-1~3 | L2 | 皮肤增量配置继承与优先级；`--glados-home` 替换语义不变 |
@@ -534,11 +541,12 @@ Main.loadConfiguration(imageSet)                       Main.java:272
 mvn test -DskipTests=false       # pom 硬编码 skipTests=true，必须显式覆盖
 ```
 
-当前基线（M1 开发后实测，2026-11-15）：全仓 **61 项测试通过 / BUILD SUCCESS**，
-其中本需求新增 `ConfigurationFilesTest` 11 项 + `GladosReloadCommandTest` 1 项。明细：
+当前基线（M2 开发后实测，2026-11-15）：全仓 **82 项测试通过 / BUILD SUCCESS**，
+本需求累计新增 33 项。明细：
 
 ```
-ConfigurationFilesTest        11   (FR-01/02/03/04/08 契约与单元)
+ActionAuthoringM2Test         17   (FR-05/06/09/10 契约与单元)
+ConfigurationFilesTest       15   (FR-01/02/03/04/08 + D-1 回归)
 GladosReloadCommandTest        1   (FR-03 命令入口)
 GladosBreedingOverrideTest     7
 GladosBridgeTest             20
@@ -547,16 +555,25 @@ GladosManagedConstraintsTest  11
 GladosStatusBodyTest           2   (并行改动，非本需求)
 ```
 
-> 文档 v1.0 时的基线为 32 项；其余增量来自其他并行工作，非本需求引入。
+> 版本演进：v1.0 基线 32 项 → M1 后 61 项 → D-1 修复后 65 项 → M2 后 82 项。
+> 其余增量来自其他并行工作，非本需求引入。
 
 ### 8.4 真机 GUI 验收清单
 
-1. 非托管直接运行：角色正常出现、托盘存在、自主行为与增殖表现与改造前一致。
+1. 非托管直接运行：角色正常出现、托盘存在、增殖表现与改造前一致。
+   ⚠️ **自主行为序列预期会有变化**：D-1 修复恢复了 7 处后继行为列表（§11.1），这是有意变更，
+   不与「零变化」对照；重点确认没有卡死或角色被传送到屏幕顶端。
 2. 托管运行：不出现托盘、不检查更新、角色数量恒为 1（`createMascot` 显式命令仍可增加）。
 3. 把角色拖到地面静置，用 `setBehavior` 预览附录 B 的示例动作，确认播放符合预期。
 4. 修改示例的 `Duration` 并触发重载，确认变化在**不重启**的情况下生效。
 5. 新增/替换 PNG 后重载，确认画面更新（FR-04）。
 6. 构造错误配置触发重载，确认角色未消失、旧配置仍可播放、错误响应可读。
+7. **D-1 专项**：触发鼠标追逐 / 点击，观察 `ChaseMouse → SitAndFaceMouse → {转头 / 晃腿}` 状态链，
+   并确认角色最终能回到正常自主行为；若长期停留，按 §11.1 的可控回退删除对应 `<NextBehaviorList>`。
+8. **M2 专项**：用 `Duration="${500+Math.random()*1000}"` 的帧动作重载，确认节奏变化；
+   用 `Image="file:/abs/path.png"` 引用皮肤目录外的 PNG，确认能正常显示。
+9. **M2 专项**：某皮肤目录只放一个增量 `actions.xml`（只覆盖 1 个动作），
+   确认其余 90 个全局动作仍可播放（FR-10）。
 
 ---
 
@@ -581,7 +598,7 @@ GladosStatusBodyTest           2   (并行改动，非本需求)
 
 | 批次 | 内容 | 退出条件 |
 |---|---|---|
-| **M0 · 规范与示例** | FR-11、FR-12、FR-08 的 TC-10（暴露 D-1） | 文档与示例可复制运行；D-1 有明确结论与独立缺陷单 |
+| **M0 · 规范与示例** | FR-11、FR-12、FR-08 的 TC-10（暴露 D-1） | 文档与示例可复制运行；D-1 有明确结论（✅ 已完成；D-1 实际修复在 Q5 批次 6 完成） |
 | **M1 · 三件套（核心）** | FR-01、FR-02、FR-03、FR-04、FR-08 | 改 XML → 一次请求 → 看到效果；全部 L1/L2 用例通过；非托管回归通过 |
 | **M2 · 表达力** | FR-05、FR-06、FR-09、FR-10 | 帧参数可表达式化；皮肤增量覆盖可用；XSD 对齐 |
 | **M3 · 生态** | FR-07 及可视化编辑器预研 | 新动作类型可声明式接入；或产出「不做」的书面结论 |
@@ -598,9 +615,40 @@ M1 是本文的最小可交付闭环：它单独就能把 G1 从「不可能」�
 | Q2 | 单文件内同名 Action 是覆盖还是报错？ | FR-02 AC-02-3 | 报错（防笔误），跨文件才允许覆盖 |
 | Q3 | 重载失败时是「保留旧配置」还是「回滚到上一次成功快照」？ | FR-03 AC-03-5 | 保留旧配置，不做快照，实现更简单 |
 | Q4 | 图片缓存刷新是全量还是按 `imageSet`？ | FR-04 AC-04-3 | 按 `imageSet`（`removeAll` 已有实现） |
-| Q5 | D-1 是改 schema 映射（改成 `NextBehavior`）还是改 4 份 XML（改成 `NextBehaviorList`）？ | FR-08 / R4 | 改 XML 更贴近 schema 定义，但需回归 28 处；由缺陷单决策 |
+| Q5 | D-1 是改 schema 映射（改成 `NextBehavior`）还是改 4 份 XML（改成 `NextBehaviorList`）？ | FR-08 / R4 | **已决策（2026-11-15）：方案 C —— 数据统一到 `NextBehaviorList` + 解析层兼容 `<NextBehavior>` 别名**，详见 §11.1 |
 | Q6 | 皮肤增量覆盖是否需要同时支持 `behaviors.xml` 增量？ | FR-10 | 需要，与 Action 一致 |
 | Q7 | 可视化编辑器是否在本仓库内实现？ | FR-07 / M3 | 本期只保证通道，编辑器独立立项 |
+
+### 11.1 Q5 决策记录（2026-11-15，D-1 修复）
+
+**决策：方案 C —— 数据层统一到规范名，解析层同时兼容历史别名。两个原选项都不采纳。**
+
+| 方案 | 做法 | 否决/采纳理由 |
+|---|---|---|
+| A · 改 schema | 把三份 `schema*.properties` 的 `NextBehaviourList` 改成 `NextBehavior` | ❌ `glados-behaviors.xml` 的 5 处 `<NextBehaviorList>` 会立刻失效，托管 AI 行为链断裂（违反 NFR-02）；且 `schema_ja.properties` 映射的是 `次の行動リスト`，改一个键会牵动全部本地化标签解析 |
+| B · 改 4 份 XML | 28 处 `<NextBehavior>` → `<NextBehaviorList>` | ⚠️ 方向正确，但**只改数据不治根**：第三方皮肤、历史配置、外部动作包里一旦再出现旧写法，仍会静默失效，D-1 这类缺陷会复发 |
+| **C · 数据统一 + 解析兼容** | ① 仓库内 4 份 XML 统一为 `<NextBehaviorList>`；② `BehaviorBuilder` 在规范名找不到时接受 `<NextBehavior>` 作为兼容别名并 warn | ✅ 仓库自身与 schema/`glados-behaviors.xml` 完全一致（满足 AC-08-4、启动无告警）；同时向后兼容任何来源的历史配置，根除「节点名不匹配 → 静默丢弃」这一整类缺陷 |
+
+> **补充佐证（M2 期间发现）**：`conf/Mascot.xsd` 的 `Behavior` 定义里本来就是
+> `<element name="NextBehaviorList" type="tns:NextBehaviorList"/>`。
+> 也就是说 XSD、schema 映射、GLaDOS 行为表三方一致，**只有 4 份 conf XML 用了旧写法**，
+> 方案 C 的「统一到规范名」方向与既有静态契约完全吻合；方案 A 反而会让配置与 XSD 冲突。
+
+**配套约束与已知影响**：
+
+1. **不修改 `schema*.properties`、不修改 `glados-behaviors.xml`**：规范名以现有 schema 为准，托管 AI 行为表 5 处 `NextBehaviorList` 保持有效（NFR-02）。
+2. **有意的行为变更（R4 落地）**：修复后 `behaviors.xml` 的 7 处后继行为列表首次真正生效（5 处 `Add="false"`、2 处 `Add="true"`）。
+   经核实，`CalmBehavior.xml` / `MischievousBehavior.xml` / `ProfessionalBehavior.xml` 共 21 处**在 Java 代码中无任何加载点**，属历史资产，改名不影响运行。
+   生效的是经典状态链：`ChaseMouse → SitAndFaceMouse → {SitAndSpinHead / SitWhileDanglingLegs}`、
+   `SitDown →(Add=true) {SitWhileDanglingLegs, LieDown}`、`LieDown → {SitDown / Crawl…}`、
+   `CrawlAlongWorkAreaFloor → LieDown`、`CrawlAlongIECeiling → LieDown`。
+   这属于**恢复配置作者的设计意图**，不是扩展改造引入的新行为；NFR-01 的「零变化」针对扩展改造，本缺陷修复不在其列，但必须在 §8.4 真机验收中对照观察。
+3. **防卡死保证**：所有 `Add="false"` 的后继列表均非空、且引用的行为名在主配置中存在（新增 headless 回归测试锁定），
+   避免 `buildNextBehavior()` 因 `totalFrequency==0` 把角色传送回屏幕顶端（R4 的具体化缓解）。
+4. **可控回退**：若真机观察出现角色长期停留在某一状态，删除对应的 `<NextBehaviorList>` 节点即可退回纯全局加权随机，
+   无需回滚代码；兼容层仍保证不会静默失效。
+5. **AC-08-4 验收方式随之调整**：由「检出不一致」改为「仓库内 `conf/*.xml` 已全部一致（绿灯）+ 别名仍可被解析（绿灯）」，
+   诊断方法 `detectNodeNameMismatch()` 保留，语义从「将被忽略」改为「兼容别名，建议改名」。
 
 ---
 
@@ -699,6 +747,7 @@ grep -rn '<NextBehavior '          src/main/resources/conf/*.xml           # 28 
 | v1.0 | 2026-11-15 | 初稿：基于动作系统调研与绑定链路核实，产出 12 条功能需求、8 条非功能需求、16 项测试用例；记录 D-1/D-2/D-3 三项已核实缺陷 |
 | v1.1 | 2026-11-15 | 开始开发，新增 §13 实时进度章节 |
 | v1.2 | 2026-11-15 | M0 + M1 完成：批次 1–5 进度回写；测试基线 32 → 61；附录 A 补充 M1 新增源码入口；明确 Q5 待决与真机验收未完成 |
+| v1.3 | 2026-11-15 | 新增 §11.1 Q5 决策记录（方案 C）与批次 6；新增批次 7（M2 四项）；D-1 / D-2 标注已修；§8.4 验收清单扩为 9 条；测试基线 61 → 82；§13.3 更新实施边界 |
 
 ---
 
@@ -713,8 +762,9 @@ grep -rn '<NextBehavior '          src/main/resources/conf/*.xml           # 28 
 |---|---|---|---|
 | M0 · 规范与示例 | FR-11 / FR-12 / D-1 诊断 | ✅ 完成 | 诊断、契约测试、动作设计指南、2 组可运行示例全部交付 |
 | M1 · 核心三件套 | FR-01 / FR-02 / FR-03 / FR-04 / FR-08 | ✅ **代码与测试完成** | 批次 1–5 全部落地，全量 61 项测试通过；**仅剩真机 GUI 验收（§8.4）** |
-| M2 · 表达力 | FR-05 / FR-06 / FR-09 / FR-10 | 未开始 | P2，方案需单独评审（§10）；`resolveImagePath` 已为 FR-06 铺路 |
-| M3 · 生态 | FR-07 与可视化编辑器 | 未开始 | P3，预览通道（reload + setBehavior）已就绪 |
+| Q5 · D-1 缺陷修复 | 后继行为节点名不一致 | ✅ 完成 | 方案 C（数据统一 + 解析兼容），批次 6；行为分布变化待真机对照 |
+| M2 · 表达力 | FR-05 / FR-06 / FR-09 / FR-10 | ✅ **代码与测试完成** | 批次 7 全部落地，全量 82 项测试通过；**仅剩真机 GUI 验收（§8.4）** |
+| M3 · 生态 | FR-07 与可视化编辑器 | 未开始 | P3，本期不实现；预览通道（reload + setBehavior）已就绪 |
 
 ### 13.2 批次记录
 
@@ -767,8 +817,9 @@ grep -rn '<NextBehavior '          src/main/resources/conf/*.xml           # 28 
 - 验证：`mvn test -DskipTests=false -q` → **60 项全通过 / exit=0**（基线见 §8.3）。
 - 测试类刻意放在 `com.group_finity.mascot.config` 同包，以访问包私有的 `getActionBuilders()`，
   避免重蹈「测试镜像逻辑、真实配置被误改仍全绿」的覆辙（§8.1 的教训）。
-- **TC-10 采用绿灯写法**：断言「诊断能检出 D-1」而非断言「配置正确」。D-1 的修复仍留给 Q5 决策，
-  本期不改变运行时行为语义；这样既固化了事实，也不会留下一个常红的测试。
+- **当时 TC-10 采用绿灯写法**：断言「诊断能检出 D-1」而非断言「配置正确」，
+  修复留给 Q5 决策，以免留下常红测试。该决策已在批次 6 落地，用例随之改为
+  「真实配置全部一致 + 兼容别名仍可解析」的双绿灯形式。
 
 #### 批次 4 · FR-12 示例资产与动作设计指南（2026-11-15）
 
@@ -794,11 +845,58 @@ grep -rn '<NextBehavior '          src/main/resources/conf/*.xml           # 28 
   （Javadoc 命令列表、`RELOAD` 分支、`reload()` 方法），并行内容完整保留。
 - 验证：`mvn test -DskipTests=false -q` → **61 项全通过 / exit=0**；`git diff --check` 通过。
 
+#### 批次 6 · Q5 决策与 D-1 修复（2026-11-15，全量测试通过）
+
+| 文件 | 改动 |
+|---|---|
+| `docs/…requirements.md` §11.1 | **Q5 决策记录**：否决 A（改 schema，会破坏 glados 5 处）、不单独采纳 B（只改数据不治根），采用 C「数据统一 + 解析兼容」；记录有意的行为变更与可控回退方式 |
+| `conf/behaviors.xml` + 3 份行为变体 | 28 处 `<NextBehavior>` → `<NextBehaviorList>`，与 `schema*.properties`、`glados-behaviors.xml` 一致；XML 全部经解析器校验合法 |
+| `config/BehaviorBuilder.java` | 规范名优先；找不到时接受 `<NextBehavior>` 别名并**一次性 warn**（避免 28 条刷屏），第三方/历史配置不再静默失效 |
+| `config/Configuration.java` | 新增只读诊断接口 `getBehaviorBuilder(name)`，供测试断言后继列表真正被解析 |
+| `config/ConfigurationFiles.java` | `detectNodeNameMismatch()` 语义从「将被忽略」改为「兼容别名、建议改名」 |
+| `test/config/ConfigurationFilesTest.java` | TC-10 改为绿灯版（4 份真实配置全部一致、各 7 处）；新增别名诊断、两种标签均解析、`Add=false` 后继列表非空、glados 5 处未回归，共 4 项 |
+
+- **核实到的影响面**：3 份行为变体 XML 在 Java 代码中**无任何加载点**，改名字不影响运行；
+  真正生效的只有 `behaviors.xml` 的 7 处（5 处 `Add="false"`、2 处 `Add="true"`）。
+- **防卡死**：新增回归测试锁定所有 `Add="false"` 列表至少含 1 个 `BehaviorReference`，
+  避免 `buildNextBehavior()` 因 `totalFrequency==0` 把角色传送回屏幕顶端。
+- 验证：`mvn test -DskipTests=false -q` → **65 项全通过 / exit=0**；`git diff --check` 通过。
+- 待办：§8.4 真机对照观察恢复后的状态链（点击桌宠后能否回到正常自主行为）。
+
+#### 批次 7 · M2 表达力四项（2026-11-15，全量测试通过）
+
+| 需求 | 文件 | 落地 |
+|---|---|---|
+| FR-05 帧参数表达式化 | `config/AnimationBuilder.java`、`config/ActionBuilder.java` | `Velocity` / `Duration` / `ImageAnchor` 改走 `Variable.parse` + `VariableMap` 求值；两个分量分别求值后**仍参与原有 scaling 换算**（AC-05-3）；`Duration < 1` 在加载期直接拒绝，避免 `Animation.getPoseAt()` 除零（R6）；错误信息带 `Action[名] Pose[序号]`（AC-08-1/5，且 headless 下有兜底） |
+| FR-06 图片路径解绑 | `config/AnimationBuilder.java` | 新增显式 `file:` 前缀支持绝对路径（含 `file:///` 写法）；缺图报错含**完整解析路径 + Action/Pose 定位**（AC-06-2）；`resolveImagePath` 保持 dev/prod 共用一套拼接（AC-06-3）；相对子目录由 `Paths.resolve` 自然支持（AC-06-1） |
+| FR-09 XSD 对齐 | `conf/Mascot.xsd` | `Type` 枚举改为运行时 6 种；`Pose` 的 `Velocity`/`ImageAnchor` 改用 `tns:NumericPairOrExpression`、`Duration` 改用 `tns:Parameter`；新增测试用 `SchemaFactory` 编译 XSD 并断言枚举集合（AC-09-1/2） |
+| FR-10 皮肤增量覆盖 | `config/ConfigurationFiles.java`、`Main.java` | 新增 `build(..., baseActions, baseBehaviors)` 重载，按「全局主文件+动作包 → 皮肤主文件+动作包 → 全局行为 → 皮肤行为」顺序加载；`seen` 集合对同一文件去重；`ConfigPaths` 增加 base 字段，启动与 reload 共用（AC-10-1/2/4） |
+| 文档与示例 | `docs/action-design-guide.md`、`examples/` | 指南更新 FR-05/06/09/10 用法与 XSD/IDE 校验策略；新增表达式示例 |
+
+- **实现中测试抓到的真实回归（已修）**：最初用 `Paths.get(imageAttr).isAbsolute()` 判断绝对路径，
+  结果把历史写法 `/shime1.png` 误判为绝对路径，会**破坏全部 132 个 Pose**（违反 AC-06-4）。
+  契约测试 `allRealPoseImagesResolveConsistently` 当场报红后，改为不与历史写法冲突的显式 `file:` 前缀，
+  并补 `leadingSlashStaysRelativeToImageSet` 锁定该行为。
+- **AC-05-2 的一处有记录偏差**：Pose 是不可变对象，帧参数在**配置加载期**求值一次，
+  上下文包含 Action 节点的全部属性，但**不含运行时的 `mascot`**（加载期尚无角色实例）。
+  `Animation/@Condition` 与动作参数仍保持原有的运行时求值语义，不受影响。已在指南 §5 写明。
+- **AC-09-2 判定为不适用**：运行时继续不启用 XSD 校验（保持 NFR-01 启动行为、避免历史配置被判非法），
+  XSD 仅服务 IDE 补全与静态检查；策略与启用方法写入指南 §7.1，测试只校验 XSD 可编译且枚举正确。
+- **AC-10-3 未受影响**：`GladosBehaviors.loadInto()` 仍在最后合并，托管覆盖优先级最高；
+  `Configuration.isBehaviorEnabled()` 的代码层硬过滤作为最终兜底，`glados-behaviors.xml` 一个字节未改。
+- 验证：`mvn test -DskipTests=false -q` → **82 项全通过 / exit=0**（新增 `ActionAuthoringM2Test` 17 项）；
+  `mvn -q compile` → COMPILE_OK；`git diff --check` 通过。
+
 ### 13.3 本期实施边界
 
-1. 本期交付 **M0 + M1**；M2 / M3 为后续里程碑，不在本轮改动范围。
-2. **D-1 只做诊断、不修数据**：Q5（改 schema 还是改 4 份 XML）未决，且任一修法都会激活 28 处后继行为列表、改变自主行为分布，与 NFR-01「非托管行为零变化」冲突。诊断日志与契约测试先固化事实，修复单独立项。
-3. 并行改动（`/status` mascots 数组、`GladosStatusBodyTest.java`）已由另一会话提交为 `0889305`；本轮以精确插入方式修改 `GladosBridge.java`，未覆盖其内容，也未替它提交任何文件。
-4. **本轮未执行 `git commit`**：所有改动留在工作区，等待确认后再提交。
-5. **未完成项**：§8.4 真机 GUI 验收 6 条（尤其「改 XML → reload → 画面变化」「替换 PNG → 画面更新」需要带桌面的环境）；M2 / M3 需求尚未开发。
-6. **Q5 仍待决策**：D-1 的修复方向。M1 只提供诊断与回归测试，不改变自主行为分布（NFR-01）。
+1. 本期交付 **M0 + M1 + M2**，并完成 **Q5 决策与 D-1 修复**；M3（FR-07 动作类型 SPI / 脚本型动作、可视化编辑器）明确不做，只保证预览通道就绪。
+2. **D-1 已修复**（方案 C，§11.1），不再只是诊断：`conf/*.xml` 28 处统一为规范名，`BehaviorBuilder` 兼容历史别名。
+   修复使 `behaviors.xml` 的 7 处后继行为列表首次生效，属**恢复配置作者设计意图的有意变更**；
+   NFR-01「零变化」针对扩展改造，不适用于缺陷修复，但已列入 §8.4 第 1、7 条真机对照。
+3. **提交记录**：M0 + M1 = `1f0c2d0`；Q5 决策 + D-1 修复 + M2 = 紧随其后的最终提交（与本文档同批，`git log -1` 可见）。
+4. 并行改动（`/status` mascots 数组、`GladosStatusBodyTest.java`）已由另一会话提交为 `0889305`；本轮以精确插入方式修改 `GladosBridge.java`，未覆盖其内容，也未替它提交任何文件。
+5. **未完成项**：§8.4 真机 GUI 验收 9 条（尤其「改 XML → reload → 画面变化」「替换 PNG → 画面更新」、D-1 状态链对照、皮肤增量、表达式节奏，均需带桌面的环境）；M3 / FR-07 未开发。
+6. **有记录的 AC 偏差**：AC-05-2 的 `mascot` 上下文不适用于加载期求值的帧参数（详见批次 7）；
+   AC-09-2 因运行时不启用 XSD 校验而判定不适用（详见批次 7 与设计指南 §7.1）。
+7. **可控回退**：若真机观察到角色长期停留在某一状态，删除 `behaviors.xml` 中对应的
+   `<NextBehaviorList>` 节点即可退回纯全局加权随机，无需回滚代码（§11.1）。

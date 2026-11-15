@@ -26,6 +26,16 @@ public class BehaviorBuilder {
 
 	private static final Logger log = LoggerFactory.getLogger(BehaviorBuilder.class);
 
+	/**
+	 * D-1 兼容别名：历史配置（含本仓库 2026-11-15 之前的 conf/*.xml）把后继行为列表
+	 * 写成 {@code <NextBehavior>}，而 schema 定义的规范名是 {@code <NextBehaviorList>}。
+	 * 规范名优先；找不到时才接受这些别名，避免第三方皮肤/外部动作包再次静默失效。
+	 * 详见 docs/action-authoring-extensibility-requirements.md §11.1（Q5 决策）。
+	 */
+	private static final String[] LEGACY_NEXT_BEHAVIOUR_LIST_ALIASES = { "NextBehavior" };
+	private static final java.util.concurrent.atomic.AtomicBoolean LEGACY_ALIAS_WARNED =
+			new java.util.concurrent.atomic.AtomicBoolean(false);
+
 	private final Configuration configuration;
 
 	private final String name;
@@ -79,7 +89,30 @@ public class BehaviorBuilder {
 
 		boolean nextAdditive = true;
 
-		for( final Entry nextList : behaviorNode.selectChildren( configuration.getSchema( ).getString( "NextBehaviourList" ) ) )
+		final String nextListTag = configuration.getSchema( ).getString( "NextBehaviourList" );
+		List<Entry> nextLists = new ArrayList<Entry>( behaviorNode.selectChildren( nextListTag ) );
+		if( nextLists.isEmpty( ) )
+		{
+			for( final String alias : LEGACY_NEXT_BEHAVIOUR_LIST_ALIASES )
+			{
+				if( alias.equals( nextListTag ) )
+					continue;
+				final List<Entry> legacy = behaviorNode.selectChildren( alias );
+				if( !legacy.isEmpty( ) )
+				{
+					if( LEGACY_ALIAS_WARNED.compareAndSet( false, true ) )
+					{
+						log.warn( "Legacy node <{}> detected (e.g. Behavior[{}]); accepted as an alias of <{}> "
+										+ "for backward compatibility. Please rename it to <{}>.",
+								alias, getName( ), nextListTag, nextListTag );
+					}
+					nextLists = legacy;
+					break;
+				}
+			}
+		}
+
+		for( final Entry nextList : nextLists )
                 {
 			log.info("Lists the Following Behaviors...");
 

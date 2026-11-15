@@ -9,6 +9,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.awt.Point;
@@ -168,18 +170,96 @@ public class ConfigurationFilesTest {
     // FR-08 设计时校验 / D-1 诊断
     // ------------------------------------------------------------------
 
+    private static final String[] BEHAVIOR_CONFIGS = {
+            "behaviors.xml", "CalmBehavior.xml", "MischievousBehavior.xml", "ProfessionalBehavior.xml"
+    };
+
+    private static Document parseReal(String name) throws Exception {
+        File real = new File("src/main/resources/conf/" + name);
+        assertTrue("契约用例必须读真实配置文件: " + name, real.isFile());
+        return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(real);
+    }
+
+    /** D-1 修复（Q5 方案 C，TC-10 绿灯版）：仓库内 4 份行为配置必须全部使用规范名。 */
     @Test
-    public void d1MismatchIsDetectableInRealBehaviorsXml() throws Exception {
-        File real = new File("src/main/resources/conf/behaviors.xml");
-        assertTrue("契约用例必须读真实配置文件", real.isFile());
-        Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(real);
+    public void allRepositoryBehaviorFilesUseCanonicalNextBehaviorList() throws Exception {
         ResourceBundle schema = ResourceBundle.getBundle("conf.schema", Locale.US);
-
-        List<String> problems = ConfigurationFiles.detectNodeNameMismatch(doc, schema);
-
-        assertFalse("D-1：<NextBehavior> 与 schema 的 NextBehaviorList 不一致应被检出", problems.isEmpty());
-        assertTrue(problems.get(0).contains("NextBehavior"));
         assertEquals("schema 实际映射", "NextBehaviorList", schema.getString("NextBehaviourList"));
+
+        for (String name : BEHAVIOR_CONFIGS) {
+            Document doc = parseReal(name);
+            List<String> problems = ConfigurationFiles.detectNodeNameMismatch(doc, schema);
+            assertTrue(name + " 不应再有节点名不一致: " + problems, problems.isEmpty());
+            assertEquals(name + " 应含 7 处后继行为列表", 7,
+                    doc.getElementsByTagName("NextBehaviorList").getLength());
+        }
+    }
+
+    /** 诊断方法本身仍有效：旧写法能被检出，并说明仍被兼容、仅建议改名。 */
+    @Test
+    public void legacyNextBehaviorAliasIsReportedByDiagnostic() throws Exception {
+        Document doc = parse(mascot("<BehaviorList><Behavior Name=\"B\" Frequency=\"1\">"
+                + "<NextBehavior Add=\"false\"><BehaviorReference Name=\"B\" Frequency=\"1\"/>"
+                + "</NextBehavior></Behavior></BehaviorList>"));
+
+        List<String> problems = ConfigurationFiles.detectNodeNameMismatch(
+                doc, ResourceBundle.getBundle("conf.schema", Locale.US));
+
+        assertEquals(1, problems.size());
+        assertTrue(problems.get(0).contains("NextBehavior"));
+        assertTrue("诊断应说明旧写法仍被兼容: " + problems.get(0),
+                problems.get(0).contains("legacy alias"));
+    }
+
+    /** 规范名与兼容别名都必须真正解析出后继行为，杜绝再次静默失效。 */
+    @Test
+    public void nextBehaviorListsAreParsedForBothCanonicalAndLegacyNames() throws Exception {
+        for (String tag : new String[]{"NextBehaviorList", "NextBehavior"}) {
+            File[] c = minimalConfig(
+                    "<Action Name=\"Base\" Type=\"Stay\"/><Action Name=\"Next\" Type=\"Stay\"/>",
+                    "<Behavior Name=\"Base\" Frequency=\"1\" Hidden=\"true\"/>");
+            Files.write(c[2].toPath(), mascot("<BehaviorList>"
+                    + "<Behavior Name=\"Base\" Frequency=\"1\" Hidden=\"true\">"
+                    + "<" + tag + " Add=\"false\"><BehaviorReference Name=\"Next\" Frequency=\"1\"/>"
+                    + "</" + tag + "></Behavior></BehaviorList>").getBytes(StandardCharsets.UTF_8));
+
+            ConfigurationFiles.Result r = ConfigurationFiles.build(
+                    c[1].getAbsolutePath(), c[2].getAbsolutePath(), "Shimeji");
+            BehaviorBuilder b = r.getConfiguration().getBehaviorBuilder("Base");
+
+            assertNotNull("<" + tag + "> 应产出 BehaviorBuilder", b);
+            assertEquals("<" + tag + "> 的后继列表应被解析", 1, b.getNextBehaviorBuilders().size());
+            assertEquals("Next", b.getNextBehaviorBuilders().get(0).getName());
+            assertFalse("<" + tag + "> 的 Add=false 应被识别", b.isNextAdditive());
+        }
+    }
+
+    /** R4 防卡死：Add=false 会清空全局候选，其后继列表必须非空。 */
+    @Test
+    public void nonAdditiveNextListsAreNeverEmpty() throws Exception {
+        for (String name : BEHAVIOR_CONFIGS) {
+            NodeList lists = parseReal(name).getElementsByTagName("NextBehaviorList");
+            for (int i = 0; i < lists.getLength(); i++) {
+                Element list = (Element) lists.item(i);
+                if ("false".equalsIgnoreCase(list.getAttribute("Add"))) {
+                    assertTrue(name + " 第 " + (i + 1) + " 个 Add=false 后继列表不能为空，"
+                                    + "否则 buildNextBehavior 会因 totalFrequency=0 把角色传送回屏幕顶端",
+                            list.getElementsByTagName("BehaviorReference").getLength() > 0);
+                }
+            }
+        }
+    }
+
+    /** NFR-02：托管 AI 行为表 5 处规范名与禁增殖覆盖不得被本次改名波及。 */
+    @Test
+    public void gladosBehaviorTableStillUsesCanonicalList() throws Exception {
+        File f = new File("src/main/resources/glados-behaviors.xml");
+        assertTrue(f.isFile());
+        Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(f);
+
+        assertEquals(5, doc.getElementsByTagName("NextBehaviorList").getLength());
+        assertTrue(ConfigurationFiles.detectNodeNameMismatch(
+                doc, ResourceBundle.getBundle("conf.schema", Locale.US)).isEmpty());
     }
 
     @Test

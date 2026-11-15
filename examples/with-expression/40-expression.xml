@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  示例 C：帧参数表达式（M2 / FR-05），零新图
+
+  演示 <Pose> 的 ImageAnchor / Velocity / Duration 支持 ${} 表达式：
+    - 表达式在「配置加载期」求值一次，上下文是所在 Action 节点的全部属性；
+      本例 stepX="6"、anchorX="64"、anchorY="128" 都会被 ${...} 读到。
+    - 逗号分隔的两个分量分别求值，例如 "${stepX},0" 与 "${-stepX},0"。
+    - Duration="${200+Math.random()*200}" 每次 reload 得到 200~400 tick 的随机节奏。
+    - 求值结果仍参与 Scaling 换算；ImageAnchor 是像素锚点，不缩放。
+
+  ⚠️ 帧参数里不能用 mascot.*（加载期还没有角色实例）；需要运行时上下文请用
+      Animation/@Condition 或动作参数。Duration 必须 >= 1，否则加载期直接报错。
+
+  图片全部复用现有 /shime1.png、/shime2.png，不需要新增 PNG。
+  配套行为见 40-expression-behaviors.xml。
+-->
+<Mascot>
+    <ActionList>
+        <Action Name="ExpressionDance" Type="Stay" BorderType="Floor"
+                stepX="6" anchorX="64" anchorY="128">
+            <Animation>
+                <Pose Image="/shime1.png"
+                      ImageAnchor="${anchorX},${anchorY}"
+                      Velocity="${stepX},0"
+                      Duration="${200+Math.random()*200}" />
+                <Pose Image="/shime2.png"
+                      ImageAnchor="${anchorX},${anchorY}"
+                      Velocity="${stepX},0"
+                      Duration="200" />
+                <Pose Image="/shime1.png"
+                      ImageAnchor="${anchorX},${anchorY}"
+                      Velocity="${-stepX},0"
+                      Duration="200" />
+            </Animation>
+        </Action>
+    </ActionList>
+</Mascot>

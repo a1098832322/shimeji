@@ -14,10 +14,12 @@
 | `behaviors.d/10-my-dance.xml` | 示例 A 的配套行为声明 |
 | `with-new-image/30-wave.xml` | 示例 B：需要新 PNG 的帧动作 |
 | `with-new-image/30-wave-behaviors.xml` | 示例 B 的配套行为声明 |
+| `with-expression/40-expression.xml` | 示例 C：帧参数表达式（M2 / FR-05），零新图 |
+| `with-expression/40-expression-behaviors.xml` | 示例 C 的配套行为声明 |
 
 片段根节点都是 `<Mascot>`，与主动作文件一致；内部只含一个 `<ActionList>`
 或 `<BehaviorList>` 即可。同一目录下的文件按**文件名字典序**加载，
-后面的同名 `Action` 会覆盖前面的（`docs/action-design-guide.md` §3）。
+后面的同名 `Action` 会覆盖前面的（`docs/action-design-guide.md` §4.3）。
 
 ## 试用示例 A（推荐先试这个，不需要任何图片）
 
@@ -60,5 +62,17 @@
    （注意改到对应目录，两个文件不属于同一类）。
 3. 同示例 A 的步骤 4–5，把 `behavior` 换成 `MyWave`。
 
+## 试用示例 C（M2 新能力，零新图）
+
+1. 把 `with-expression/40-expression.xml` 复制进 `actions.d/`，
+   `40-expression-behaviors.xml` 复制进 `behaviors.d/`。
+2. 按示例 A 的步骤 4–5 下发 `reload`，再把 `behavior` 换成 `ExpressionDance`。
+3. 反复 `reload` + `setBehavior`，观察第一帧时长随机变化（`${200+Math.random()*200}`），
+   左右位移由 `${stepX}` / `${-stepX}` 控制。
+4. 试着把 `stepX="6"` 改成 `stepX="12"`，或直接把某个 `Duration` 改成 `"0"`：
+   前者无需改任何 Pose 就能整体加速；后者会在 `reload` 时返回可读错误
+   （`Action[ExpressionDance] Pose[1] ... Duration must be >= 1`），旧配置与现有角色保持不变。
+
 > 已知限制：图片在**配置加载时**预读进 `ImagePairs` 缓存。新增或替换 PNG 后
 > 必须触发 `reload`（命令会清缓存并重新读盘）；只改 XML 而不 reload 同样不生效。
+> 帧参数表达式同样在加载期求值，改表达式后必须 `reload` 才会变化。

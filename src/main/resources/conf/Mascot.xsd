@@ -53,11 +53,12 @@
 		   		<attribute name="Type" use="required">
 		    		<simpleType>
 		    			<restriction base="string">
+                            <!-- FR-09：与 ActionBuilder.java 运行时实际支持的 6 种类型一致 -->
 		    				<enumeration value="Embedded"></enumeration>
 		    				<enumeration value="Move"></enumeration>
-		    				<enumeration value="Pause"></enumeration>
-		    				<enumeration value="Fixed"></enumeration>
-		    				<enumeration value="Composite"></enumeration>
+                            <enumeration value="Stay"></enumeration>
+                            <enumeration value="Animate"></enumeration>
+                            <enumeration value="Sequence"></enumeration>
 		    				<enumeration value="Select"></enumeration>
 		    			</restriction>
 		    		</simpleType>
@@ -112,21 +113,10 @@
    				</restriction>
    			</simpleType>
    		</attribute>
-   		<attribute name="ImageAnchor" use="required">
-   			<simpleType>
-   				<restriction base="string">
-   					<pattern value="-?\d+,-?\d+" />
-   				</restriction>
-   			</simpleType>
-   		</attribute>
-   		<attribute name="Velocity" use="required">
-   			<simpleType>
-   				<restriction base="string">
-   					<pattern value="-?\d+,-?\d+" />
-   				</restriction>
-   			</simpleType>
-   		</attribute>
-   		<attribute name="Duration" type="int" use="required" />
+           <!-- FR-05：两个分量均可为整数字面量或 ${} / #{} 表达式，故放宽为逗号分隔的两段 -->
+           <attribute name="ImageAnchor" type="tns:NumericPairOrExpression" use="required" />
+           <attribute name="Velocity" type="tns:NumericPairOrExpression" use="required" />
+           <attribute name="Duration" type="tns:Parameter" use="required" />
     </complexType>
     
     <complexType name="ActionReference">
@@ -194,6 +184,13 @@
     	<restriction base="string">
     		<pattern value="([$#]\{.+\})|(\-?[0-9]+(\.[0-9]+)?)|true|false" />
     	</restriction>
+    </simpleType>
+
+    <!-- FR-05：允许 "-1,2"、"${vx},${vy}" 以及字面量与表达式混合 -->
+    <simpleType name="NumericPairOrExpression">
+        <restriction base="string">
+            <pattern value="[^\s,]+,[^\s,]+" />
+        </restriction>
     </simpleType>
     
 </schema>

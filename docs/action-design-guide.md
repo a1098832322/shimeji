@@ -148,9 +148,32 @@ curl -X POST http://127.0.0.1:<port>/control \
 
 XML 里 `<` 必须写成 `&lt;`。
 
-> ⚠️ **本期尚未实现 FR-05**：`<Pose>` 的 `Velocity` / `Duration` / `ImageAnchor`
-> 仍走 `Integer.parseInt`，**不能写 `${}`**。表达式目前只能用在
-> `Animation/@Condition`、`Behavior/@Condition` 和动作参数（含 `ActionReference`）上。
+### 5.1 帧参数表达式（M2 · FR-05）
+
+`<Pose>` 的 `Velocity` / `Duration` / `ImageAnchor` 现在同样支持 `${}` / `#{}`，
+逗号分隔的两个分量可以分别写表达式：
+
+```xml
+<Action Name="MyStep" Type="Stay" vx="4" ax="64" ay="128">
+  <Animation>
+    <Pose Image="/shime26.png"
+          ImageAnchor="${ax},${ay}"
+          Velocity="${vx},0"
+          Duration="${500+Math.random()*1000}" />
+  </Animation>
+</Action>
+```
+
+- 求值发生在**配置加载期**，上下文是所在 Action 节点的全部属性：
+  上例 `${vx}` 取到 `4`，也可直接写算术、随机等表达式。
+- ⚠️ 加载期还没有 `mascot` 实例，**帧参数里不能访问 `mascot.*`**；
+  需要运行时上下文请用 `Animation/@Condition` 或动作参数（仍按上表时机求值）。
+- `Duration` 必须 ≥ 1，否则加载期直接报错（`Animation.getPoseAt()` 会对总时长取模，0 会除零）。
+- `Velocity` 求值后仍参与 `Scaling` 换算；`ImageAnchor` 是像素锚点，不缩放。
+- 表达式非法、结果不是数值、或分量不是恰好两个时，错误信息会带
+  `Action[名] Pose[序号]` 与字段名，可直接定位到具体一帧。
+
+纯整数字面量与改造前完全一致，既有 132 个 Pose 无需修改。
 
 ---
 
@@ -167,12 +190,15 @@ XML 里 `<` 必须写成 `&lt;`。
 `Frequency="0"` 的行为**仍能**被 `Configuration.buildBehavior(name)` 按名构建——
 这正是 GLaDOS `setBehavior` 能预览 AI 动作的原因，也是新动作推荐的注册方式。
 
-`NextBehavior` 特例：命令 `{"cmd":"setBehavior","behavior":"idle"}` 会回到
+`idle` 特例：命令 `{"cmd":"setBehavior","behavior":"idle"}` 会回到
 `buildNextBehavior(null, mascot)` 自主树，**不要**用它来预览新动作。
 
-> ⚠️ **已知缺陷 D-1**：`conf/*.xml` 里写的是 `<NextBehavior>`（28 处），
-> 而 `schema*.properties` 映射的是 `NextBehaviorList`，精确匹配下这些节点不会被解析。
-> M1 只加了诊断日志与契约测试，**没有改变运行时行为**（修复方案见需求文档 Q5）。
+> ✅ **D-1 已修复（2026-11-15，Q5 方案 C）**：仓库内 4 份行为配置统一写
+> `<NextBehaviorList>`，与 `schema*.properties`、`Mascot.xsd`、`glados-behaviors.xml` 三方一致。
+> 外部或历史配置里若仍写 `<NextBehavior>`，`BehaviorBuilder` 会当作**兼容别名**接受并输出一条 warn，
+> 不再静默失效（建议改成规范名）。
+> 修复后 `behaviors.xml` 的 7 处后继行为列表首次生效，自主行为序列会与旧版本不同——
+> 这是恢复配置作者设计意图的有意变更，详见需求文档 §11.1 与 §8.4 的真机对照项。
 
 ---
 
@@ -184,33 +210,60 @@ XML 里 `<` 必须写成 `&lt;`。
 - **文件名自由**：`shime1.png`…`shime46.png` 只是现有资源的命名习惯。
   唯一硬编码是 `ImageSetChooser` 用 `shime1.png` 做皮肤预览图，新建皮肤至少要留这一张。
 - **相对子目录可用**：`Image="/sub/wave1.png"` 会解析到 `img/<角色>/sub/wave1.png`。
+- **皮肤目录外的图片（M2 · FR-06）**：用显式前缀 `Image="file:/opt/assets/wave1.png"`
+  或 `Image="file:///opt/assets/wave1.png"` 指向绝对路径，适合共用素材库、临时预览图。
+  ⚠️ **不要直接写 `/wave1.png` 表示绝对路径**——前导 `/` 是历史写法，含义是「相对角色目录根」，
+  会被拼成 `img/<角色>/wave1.png`。
 - **`ImageRight` 可省略**：不写时程序自动水平翻转左图生成右朝向版本；
   左右姿态不对称时再显式提供。
 - **`ImageAnchor` 是像素锚点**：`64,128` 表示 128×128 图的底部中心，换尺寸必须同步改。
-- **皮肤必须提供同名文件**：`imageSet` 是配置加载时注入的目录名，同一份 `actions.xml`
-  被所有皮肤共用，每个皮肤目录都得有被引用到的全部 PNG。
-- **缓存会过期问题**：图片只在配置加载时读盘。`reload` 命令会清缓存并重新读盘；
+- **图片目录仍需覆盖被引用的文件**：`imageSet` 是配置加载时注入的目录名，
+  凡是用相对路径引用的 PNG，每个皮肤目录都得有同名文件。
+  M2 起皮肤**动作配置可以只写增量**（§8），但图片资源不适用增量合并。
+- **缓存不刷新问题**：图片只在配置加载时读盘。`reload` 命令会清缓存并重新读盘；
   但如果你直接改文件而不 reload，画面不会变（已知缺陷 D-3 的缓解手段）。
+- **缺图错误信息（M2）**：会给出完整解析后路径与 `Action[名] Pose[序号]`，
+  不再只是泛化的 `FailedLoadImage`。
 
-需要新造型的完整示例见 `examples/with-new-image/30-wave.xml`。
+需要新造型的完整示例见 `examples/with-new-image/30-wave.xml`；
+带表达式的帧动作见 `examples/with-expression/`。
+
+### 7.1 XSD 与 IDE 校验（M2 · FR-09）
+
+`conf/Mascot.xsd` 的 `Type` 枚举已与运行时对齐为
+`Embedded / Move / Stay / Animate / Sequence / Select`，
+`Pose` 的 `Velocity` / `ImageAnchor` / `Duration` 也已放宽为允许表达式。
+
+- **运行时不启用 XSD 校验**：`DocumentBuilderFactory` 保持原样，启动行为零变化；
+  历史配置中 XSD 未覆盖的节点（如 `Information`、`Toggleable`）不会导致启动失败。
+- **IDE 用法**：把 `conf/Mascot.xsd` 关联到 `conf/*.xml` 的
+  `http://www.group-finity.com/Mascot` 命名空间，即可获得 `Type` 补全与静态检查。
+  IDE 若对个别历史节点报「未知元素」，以运行时加载结果为准，不必为通过校验去改配置。
+- XSD 只做辅助；**真正的引用校验**由 `Configuration.validate()` 在加载期完成。
 
 ---
 
 ## 8. 动作包与皮肤隔离（M1 新增）
 
-配置加载顺序固定为：
+配置加载顺序固定为（M2 起含皮肤基础层）：
 
 ```
-actions.xml  →  actions.d/*.xml（按文件名字典序）
-behaviors.xml  →  behaviors.d/*.xml（按文件名字典序）
+（皮肤级配置时）全局 actions.xml → 全局 actions.d/*.xml
+皮肤 actions.xml                → 皮肤 actions.d/*.xml
+（皮肤级配置时）全局 behaviors.xml → 全局 behaviors.d/*.xml
+皮肤 behaviors.xml              → 皮肤 behaviors.d/*.xml
 → 统一 validate() → （托管模式）合并 glados-behaviors.xml
 ```
 
-- `actions.d` / `behaviors.d` 与各自的主文件**同目录**。
-- 目录不存在或为空时，行为与改造前完全一致。
+- `actions.d` / `behaviors.d` 与各自的主文件**同目录**，片段按文件名字典序加载。
+- 目录不存在或为空时，行为与改造前完全一致；同一个文件只加载一次（去重）。
 - 所有片段加载完才 `validate()`，所以 A 文件引用 B 文件定义的 Action 是合法的。
-- 皮肤级隔离：`img/<角色>/conf/actions.xml` + `img/<角色>/conf/actions.d/`
-  可覆盖全局配置（当前皮肤级路径仍是「整份替换」，增量继承 FR-10 属 M2 待办）。
+- **皮肤级增量覆盖（M2 · FR-10）**：`img/<角色>/conf/` 下只需写要改动的
+  `actions.xml` / `actions.d/*.xml`，其余动作与行为自动继承全局配置。
+  同名 Action / Behavior 按「后写覆盖」，优先级为
+  **全局 < 皮肤 < 托管 AI 行为表（`glados-behaviors.xml`）**。
+  ⚠️ 托管覆盖文件的「完全替换内置 AI 表」语义不变，不要依赖增量合并去拼它。
+- 多个皮肤各自构建独立 `Configuration`，互不影响；`configurations` 的 key 规则不变。
 - 加载日志会列出本次实际读取的每个文件路径与顺序。
 
 ---
@@ -249,22 +302,34 @@ behaviors.xml  →  behaviors.d/*.xml（按文件名字典序）
 | 换了 PNG 但画面还是旧的 | 图片缓存未刷 | 确认 `reload` 的 `cleared N cached image(s)` 日志 |
 | 新动作在自主行为里自己播出来了 | `Frequency` 没写 `0` | 用 `setBehavior` 显式预览即可 |
 | `setBehavior` 返回 `unknown behavior` | Behavior 片段没放进 `behaviors.d/`，或 reload 失败 | `reload` 的 error JSON |
-| `NextBehavior` 后继不生效 | 已知缺陷 D-1 | `does not match schema NextBehaviourList` |
-| IDE 报 Type 非法 | `Mascot.xsd` 枚举过时（D-2） | 运行时不校验 XSD，可忽略 |
+| 用了 `<NextBehavior>` 旧写法 | D-1 已修复：兼容别名仍生效，但建议改成 `<NextBehaviorList>` | `Legacy node <NextBehavior> detected`、`legacy alias` |
+| 修复 D-1 后桌宠总停在坐着/看鼠标 | 7 处后继行为列表首次生效（`Add="false"` 会清空全局候选） | 按需求文档 §11.1 删除对应 `<NextBehaviorList>` 回退 |
+| 帧参数表达式报错 | 结果非数值 / 分量不是两个 / `Duration` 小于 1 / 用了 `mascot.*` | `Action[名] Pose[序号]`、`cannot be evaluated`、`Duration must be >= 1` |
+| `file:` 图片不显示 | 写成了裸绝对路径 `/x.png`（被当成相对路径） | `Missing image file`，检查解析后路径是否落在 `img/<角色>/` 下 |
+| 皮肤增量没生效 | 增量放错目录，或同名动作被更后面的文件又覆盖一次 | 加载日志里 `Loaded configuration fragment` 的顺序 |
+| IDE 报 `Type` 非法 | 用了 `Pause` / `Fixed` / `Composite` 等已废弃类型 | 运行时支持 `Stay / Animate / Sequence`；XSD 已对齐，见 §7.1 |
 
 ---
 
 ## 11. 已实现 / 未实现
 
-**M1 已实现**：动作包分文件（FR-01）、同名 Action 覆盖（FR-02）、
+**M0 / M1 已实现**：动作包分文件（FR-01）、同名 Action 覆盖（FR-02）、
 显式 `reload` 命令（FR-03）、重载时刷新图片缓存（FR-04）、
 设计时诊断与错误信息增强（FR-08 主体）、预览通道契约（FR-11）、示例与本文档（FR-12）。
 
-**M2 待办（需单独评审）**：帧参数表达式化（FR-05）、图片路径进一步解绑（FR-06）、
-动作类型 SPI / 脚本型动作（FR-07）、XSD 与运行时对齐（FR-09）、皮肤级增量覆盖（FR-10）。
+**Q5 已决策、D-1 已修复**：后继行为节点名统一为 `<NextBehaviorList>`，旧写法按兼容别名接受。
 
-**已知缺陷（单独立项）**：D-1 后继行为节点名不一致、D-2 XSD 枚举过时、
-D-3 图片缓存需显式刷新（M1 的 reload 已缓解，其他路径仍未处理）。
+**M2 已实现**：帧参数表达式化（FR-05）、图片路径解绑与 `file:` 前缀（FR-06）、
+XSD 与运行时对齐（FR-09）、皮肤级增量覆盖（FR-10）。
+
+**M3 未实现（本期不做）**：动作类型 SPI / 脚本型动作（FR-07）、可视化编辑器。
+新增动作类型仍需改 `ActionBuilder` 并重编译；`Embedded` 反射路径可复用。
+
+**缺陷状态**：D-1 ✅ 已修；D-2 ✅ 已修；D-3 部分缓解——`reload` 会清缓存并重新读盘，
+但其他路径（如托盘切形象）仍不会主动失效缓存，改 PNG 后请显式 `reload`。
+
+**待真机验证**：§8.4 的 9 条 GUI 对照（含 D-1 修复后的状态链、表达式节奏、皮肤增量、
+替换 PNG 后的画面更新）。
 
 ---
 

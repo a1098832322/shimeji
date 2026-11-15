@@ -277,11 +277,17 @@ public class Main {
         final String actionsFile;
         final String behaviorsFile;
         final String effectiveImageSet;
+        /** FR-10：选中皮肤级文件时，先把全局主文件作为基础层加载；否则为 null。 */
+        final String baseActionsFile;
+        final String baseBehaviorsFile;
 
-        ConfigPaths(String actionsFile, String behaviorsFile, String effectiveImageSet) {
+        ConfigPaths(String actionsFile, String behaviorsFile, String effectiveImageSet,
+                    String baseActionsFile, String baseBehaviorsFile) {
             this.actionsFile = actionsFile;
             this.behaviorsFile = behaviorsFile;
             this.effectiveImageSet = effectiveImageSet;
+            this.baseActionsFile = baseActionsFile;
+            this.baseBehaviorsFile = baseBehaviorsFile;
         }
     }
 
@@ -293,8 +299,11 @@ public class Main {
         final String baseEnv = OriginEngineFix.getInstance().getBASE_ENVIRONMENT_PATH();
         final String baseImg = OriginEngineFix.getInstance().getBASE_IMG_PATH();
 
+        final String globalActions = baseEnv + "actions.xml";
+        final String globalBehaviors = baseEnv + "behaviors.xml";
+
         String effective = imageSet;
-        String actionsFile = baseEnv + "actions.xml";
+        String actionsFile = globalActions;
         if (new File(baseEnv + imageSet + "/actions.xml").exists()) {
             effective = baseEnv + imageSet;
             actionsFile = effective + "/actions.xml";
@@ -305,13 +314,18 @@ public class Main {
             effective = FormatUtils.formatImagePath(imageSet);
         }
 
-        String behaviorsFile = baseEnv + "behaviors.xml";
+        String behaviorsFile = globalBehaviors;
         if (new File(baseEnv + effective + "/behaviors.xml").exists()) {
             behaviorsFile = baseEnv + effective + "/behaviors.xml";
         } else if (new File(baseImg + effective + "/conf/behaviors.xml").exists()) {
             behaviorsFile = baseImg + effective + "/conf/behaviors.xml";
         }
-        return new ConfigPaths(actionsFile, behaviorsFile, effective);
+
+        // FR-10：皮肤级文件从「整份替换」改为「全局基础 + 皮肤增量」；
+        // 两者指向同一全局文件时 base 为 null，避免重复加载（ConfigurationFiles 另有一层去重）
+        final String baseActions = actionsFile.equals(globalActions) ? null : globalActions;
+        final String baseBehaviors = behaviorsFile.equals(globalBehaviors) ? null : globalBehaviors;
+        return new ConfigPaths(actionsFile, behaviorsFile, effective, baseActions, baseBehaviors);
     }
 
     public boolean loadConfiguration(String imageSet) {
@@ -322,7 +336,8 @@ public class Main {
 
             // FR-01：主文件 + actions.d/*.xml + behaviors.d/*.xml，全部加载完才统一 validate
             ConfigurationFiles.Result result = ConfigurationFiles.build(
-                    paths.actionsFile, paths.behaviorsFile, paths.effectiveImageSet);
+                    paths.actionsFile, paths.behaviorsFile, paths.effectiveImageSet,
+                    paths.baseActionsFile, paths.baseBehaviorsFile);
 
             configurations.put(paths.effectiveImageSet, result.getConfiguration());
 
@@ -972,7 +987,8 @@ public class Main {
             for (String imageSet : imageSets) {
                 final ConfigPaths paths = resolveConfigPaths(imageSet);
                 final ConfigurationFiles.Result result = ConfigurationFiles.build(
-                        paths.actionsFile, paths.behaviorsFile, paths.effectiveImageSet);
+                        paths.actionsFile, paths.behaviorsFile, paths.effectiveImageSet,
+                        paths.baseActionsFile, paths.baseBehaviorsFile);
 
                 // 托管模式的 AI 行为表必须每次重载后重新合并，
                 // 否则 glados-behaviors.xml 的 Frequency=0 禁增殖覆盖会丢失（NFR-02）
