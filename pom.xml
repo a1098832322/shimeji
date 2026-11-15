@@ -35,7 +35,19 @@
                     <exclude>**/*.ico</exclude>
                     <exclude>**/*.db</exclude>
                     <exclude>**/*.jar</exclude>
+                    <!-- 设计器前端含 ${...} 表达式示例，必须关闭过滤，否则会被 Maven 替换 -->
+                    <exclude>studio/web/**</exclude>
+                    <exclude>studio/templates/**</exclude>
                 </excludes>
+            </resource>
+            <!-- 设计器前端静态资源：原样拷贝，不做变量过滤 -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <includes>
+                    <include>studio/web/**</include>
+                    <include>studio/templates/**</include>
+                </includes>
             </resource>
             <!-- 单独配置二进制文件,不过滤 -->
             <resource>

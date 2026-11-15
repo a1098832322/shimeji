@@ -38,8 +38,12 @@ public class Configuration
     /** 每个 Action 的来源文件，用于区分「跨文件覆盖」与「单文件内重复」（FR-02）。 */
     private final Map<String, String> actionSources = new LinkedHashMap<String, String>( );
     private final Map<String, BehaviorBuilder> behaviorBuilders = new LinkedHashMap<String, BehaviorBuilder>( );
+    /** 每个 Behavior 的来源文件，供设计器图层视图显示（与 actionSources 对称，只读）。 */
+    private final Map<String, String> behaviorSources = new LinkedHashMap<String, String>( );
     private final Map<String, String> information = new LinkedHashMap<String, String>( 8 );
     private ResourceBundle schema;
+    /** 当前正在加载的来源文件；由 {@link #load(Entry, String, String)} 设置。 */
+    private String currentSource = "<unnamed>";
 
     public void load( final Entry configurationNode, final String imageSet ) throws IOException, ConfigurationException
     {
@@ -59,6 +63,8 @@ public class Configuration
      */
     public void load( final Entry configurationNode, final String imageSet, final String source ) throws IOException, ConfigurationException
     {
+
+        this.currentSource = source == null ? "<unnamed>" : source;
 
         // prepare schema
         ResourceBundle.Control utf8Control = new Utf8ResourceBundleControl( false );
@@ -165,6 +171,7 @@ public class Configuration
                 {
                     final BehaviorBuilder behavior = new BehaviorBuilder( this, node, conditions );
                     this.getBehaviorBuilders( ).put( behavior.getName( ), behavior );
+                    this.behaviorSources.put( behavior.getName( ), currentSource );
                 }
             }
 	}
@@ -394,6 +401,35 @@ public class Configuration
     public String getActionSource( final String name )
     {
         return getActionSources( ).get( name );
+    }
+
+    /**
+     * 设计器只读接口（E-1）：已加载的全部 Action 名，按声明顺序。
+     * <p>
+     * 纯读，不改变任何语义；供 {@code Shimeji Studio} 生成配置清单，
+     * 避免设计器自行解析 XML 导致与引擎结论分叉（设计文档 §6.3 E-1）。
+     */
+    public java.util.Set<String> getActionNames( )
+    {
+        return java.util.Collections.unmodifiableSet( getActionBuilders( ).keySet( ) );
+    }
+
+    /**
+     * 设计器只读接口（E-1）：按名字取 Action 构建器；不存在时返回 {@code null}。
+     * 仅用于读取 {@code getName() / getType()} 等展示信息，不提供修改入口。
+     */
+    public ActionBuilder getActionBuilder( final String name )
+    {
+        return getActionBuilders( ).get( name );
+    }
+
+    /**
+     * 设计器只读接口（E-2）：某个 Behavior 定义来自哪个文件；未声明时返回 {@code null}。
+     * 与 {@link #getActionSource(String)} 对称，供图层/覆盖链可视化使用。
+     */
+    public String getBehaviorSource( final String name )
+    {
+        return behaviorSources.get( name );
     }
 
     private Map<String, BehaviorBuilder> getBehaviorBuilders( )

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shimeji Studio · 皮肤及动作设计器</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">S</span>
+    <div>
+      <div class="brand-title">Shimeji Studio</div>
+      <div class="brand-sub" id="brand-sub">皮肤及动作设计器</div>
+    </div>
+  </div>
+
+  <div class="env" id="env-chips"></div>
+
+  <div class="top-actions">
+    <label class="skin-picker">
+      <span>当前皮肤</span>
+      <select id="skin-select"></select>
+    </label>
+    <span class="pill" id="preview-pill">预览：未启动</span>
+    <button class="btn btn-ghost" id="btn-start-preview" title="启动独立预览进程（--glados-managed）">启动预览</button>
+    <button class="btn btn-primary" id="btn-run" title="保存 → 校验 → reload → setBehavior → /status">运行</button>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="side">
+    <button class="nav-item active" data-panel="skin">皮肤工作台</button>
+    <button class="nav-item" data-panel="action">动作工作台</button>
+    <button class="nav-item" data-panel="behavior">行为工作台</button>
+    <button class="nav-item" data-panel="validate">校验中心</button>
+    <button class="nav-item" data-panel="preview">预览中心</button>
+    <button class="nav-item" data-panel="packs">扩展包与包管理</button>
+    <button class="nav-item" data-panel="layers">图层与覆盖</button>
+    <div class="side-foot">
+      <a href="/api/workspace" target="_blank" class="link">工作区 JSON</a>
+      <div class="tiny" id="side-version"></div>
+    </div>
+  </nav>
+
+  <main class="main">
+    <section class="panel" id="panel-skin"></section>
+    <section class="panel hidden" id="panel-action"></section>
+    <section class="panel hidden" id="panel-behavior"></section>
+    <section class="panel hidden" id="panel-validate"></section>
+    <section class="panel hidden" id="panel-preview"></section>
+    <section class="panel hidden" id="panel-packs"></section>
+    <section class="panel hidden" id="panel-layers"></section>
+  </main>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+<div class="modal-backdrop hidden" id="modal-backdrop">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

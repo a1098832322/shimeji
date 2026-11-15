@@ -213,23 +213,23 @@ public class Manager {
 	 */
 	public int setBehaviorAllByName(final String name, String imageSet) {
 		int applied = 0;
-		synchronized (this.getMascots()) {
-			for (final Mascot mascot : this.getMascots()) {
-				if (imageSet != null && !imageSet.equals(mascot.getImageSet())) {
-					continue;
-				}
-				Configuration configuration = Main.getInstance().getConfiguration(mascot.getImageSet());
-				if (configuration == null) {
-					continue;
-				}
-				try {
-					mascot.setBehavior(configuration.buildBehavior(name, mascot));
-					applied++;
-				} catch (final BehaviorInstantiationException e) {
-					log.warn("Failed to set behavior {} on {}: {}", name, mascot.getImageSet(), e.getMessage());
-				} catch (final CantBeAliveException e) {
-					log.warn("Fatal error setting behavior {} on {}: {}", name, mascot.getImageSet(), e.getMessage());
-				}
+		// 用桥接快照（含尚未进入调度队列的新角色）：setRole 后引擎立即 add()，
+		// 但角色要等下一次 tick 才并入 mascots，若只遍历 mascots 会误报 unknown behavior。
+		for (final Mascot mascot : this.getMascotsForBridge()) {
+			if (imageSet != null && !imageSet.equals(mascot.getImageSet())) {
+				continue;
+			}
+			Configuration configuration = Main.getInstance().getConfiguration(mascot.getImageSet());
+			if (configuration == null) {
+				continue;
+			}
+			try {
+				mascot.setBehavior(configuration.buildBehavior(name, mascot));
+				applied++;
+			} catch (final BehaviorInstantiationException e) {
+				log.warn("Failed to set behavior {} on {}: {}", name, mascot.getImageSet(), e.getMessage());
+			} catch (final CantBeAliveException e) {
+				log.warn("Fatal error setting behavior {} on {}: {}", name, mascot.getImageSet(), e.getMessage());
 			}
 		}
 		return applied;
@@ -479,8 +479,19 @@ public class Manager {
 	 * 设计文档：docs/glados-ai-integration-design.md §4
 	 */
 	public java.util.List<Mascot> getMascotsForBridge() {
+		java.util.List<Mascot> snapshot = new ArrayList<Mascot>();
 		synchronized (this.getMascots()) {
-			return new ArrayList<Mascot>(this.getMascots());
+			snapshot.addAll(this.getMascots());
 		}
+		// 新角色在 add() 之后、下一次 tick 之前只存在于 added 队列里；
+		// 桥接调用（setRole → setBehavior）需要立刻看到它。
+		synchronized (this.getAdded()) {
+			for (final Mascot pending : this.getAdded()) {
+				if (!snapshot.contains(pending)) {
+					snapshot.add(pending);
+				}
+			}
+		}
+		return snapshot;
 	}
 }

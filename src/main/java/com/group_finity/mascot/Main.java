@@ -1048,6 +1048,56 @@ public class Main {
         return languageBundle;
     }
 
+    /**
+     * 无 GUI 工具（设计器 / headless 校验）初始化语言包与基础路径。
+     * <p>
+     * 设计文档：docs/skin-action-designer-design.md §3.2、§5.4。
+     * <p>
+     * 引擎的 {@code ActionBuilder} / {@code BehaviorBuilder} / {@code AnimationBuilder}
+     * 在抛错时会读 {@code Main.getInstance().getLanguageBundle()}。设计器只做 dry-run 校验、
+     * 不起 Swing，因此需要一条不触碰 EDT 的初始化路径：本方法只读
+     * {@code settings.properties} 与 {@code language_*.properties}，不创建窗口、不写回配置。
+     * 正常运行时不会被调用，行为零变化（SD-NFR-1）。
+     */
+    public void initForHeadlessTooling() {
+        try {
+            if (properties == null || properties.isEmpty()) {
+                properties = OriginEngineFix.getInstance().getInstanceSettingProp();
+            }
+            if (languageBundle == null) {
+                try {
+                    loadLanguageProp();
+                } catch (Exception e) {
+                    // 非 dev 模式下 loadLanguageProp 读的是 ./conf/language_xx.properties；
+                    // 设计器/单测可能以别的 cwd 启动，这里退回 classpath 里的同一份文案，
+                    // 保证引擎异常信息仍可读（不影响任何运行时行为）。
+                    languageBundle = loadBundledLanguage();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Headless tooling init failed (diagnostics text may be less readable): {}", e.toString());
+        }
+    }
+
+    private Properties loadBundledLanguage() {
+        String lang = properties == null ? "en-GB" : properties.getProperty("Language", "en-GB");
+        String code = lang.contains("-") ? lang.substring(0, lang.indexOf('-')) : lang;
+        Properties fallback = new Properties();
+        for (String candidate : new String[]{"language_" + code + ".properties", "language_en.properties"}) {
+            try (InputStream in = Main.class.getResourceAsStream("/conf/" + candidate)) {
+                if (in != null) {
+                    fallback.load(new InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
+                    log.info("Headless tooling: loaded bundled language bundle {}", candidate);
+                    return fallback;
+                }
+            } catch (IOException e) {
+                log.warn("Headless tooling: failed to load bundled {}: {}", candidate, e.toString());
+            }
+        }
+        log.warn("Headless tooling: no bundled language bundle for language '{}'", lang);
+        return fallback;
+    }
+
     public void exit() {
         // 先停桥，避免 GLaDOS 侧收到端口文件后连不上
         if (gladosBridge != null) {

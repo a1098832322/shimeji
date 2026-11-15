@@ -31,7 +31,8 @@
   		<attribute name="Gap" type="tns:Parameter" />
   		<attribute name="BornX" type="tns:Parameter" />
   		<attribute name="BornY" type="tns:Parameter" />
-  		<attribute name="BornBehavior" type="tns:Parameter" />
+  		<!-- FR-09：BornBehavior 是行为名字符串（如 PullUp / Divided），不是数值表达式 -->
+  		<attribute name="BornBehavior" type="string" />
    		<attribute name="VelocityParam" type="tns:Parameter" />
    		<attribute name="RegistanceX" type="tns:Parameter" />
   		<attribute name="RegistanceY" type="tns:Parameter" />
@@ -117,6 +118,11 @@
            <attribute name="ImageAnchor" type="tns:NumericPairOrExpression" use="required" />
            <attribute name="Velocity" type="tns:NumericPairOrExpression" use="required" />
            <attribute name="Duration" type="tns:Parameter" use="required" />
+           <!-- FR-06：显式右朝向图；运行时 AnimationBuilder 支持，XSD 需同步 -->
+           <attribute name="ImageRight" type="string" />
+           <!-- 运行时 AnimationBuilder 支持音效与音量（相对 sound/ 或 img/<角色>/sound/） -->
+           <attribute name="Sound" type="string" />
+           <attribute name="Volume" type="tns:Parameter" />
     </complexType>
     
     <complexType name="ActionReference">
@@ -146,6 +152,9 @@
   		<attribute name="Frequency" type="int" use="required" />
   		<attribute name="Condition" type="tns:Parameter" />
   		<attribute name="Hidden" type="boolean" />
+  		<!-- BehaviorBuilder 支持：显式绑定动作名（缺省 = 行为名）与托盘可切换标记 -->
+  		<attribute name="Action" type="string" />
+  		<attribute name="Toggleable" type="boolean" />
     </complexType>
     
     <complexType name="NextBehaviorList">
@@ -170,6 +179,10 @@
   		<attribute name="Name" type="string" use="required" />
   		<attribute name="Frequency" type="int" use="required" />
   		<attribute name="Condition" type="tns:Parameter" />
+  		<!-- 引用节点同样是 BehaviorBuilder：可覆盖动作名与隐藏标记（仓库 behaviors.xml 已在使用） -->
+  		<attribute name="Action" type="string" />
+  		<attribute name="Hidden" type="boolean" />
+  		<attribute name="Toggleable" type="boolean" />
     </complexType>
     
     <complexType name="BehaviorCondition">
