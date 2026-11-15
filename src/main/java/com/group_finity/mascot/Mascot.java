@@ -565,6 +565,13 @@ public class Mascot
                 // Set the window region
                 getWindow().asComponent().setBounds(getBounds());
 
+                // 角色移动上报给 GLaDOS（带节流）：宿主靠它实时移动回复气泡。
+                // 只在受管模式下生效；非受管模式 isEnabled() 返回 false，零开销。
+                if (GladosOptions.isManagedProcess()) {
+                    Rectangle bounds = getBounds();
+                    GladosEventReporter.reportMascotMove(bounds.x, bounds.y, bounds.width, bounds.height);
+                }
+
                 // Set Images
                 getWindow().setImage(getImage().getImage());
 

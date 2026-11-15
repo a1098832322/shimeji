@@ -35,8 +35,22 @@ public final class GladosEventReporter {
     /** 左键点击桌宠：GLaDOS 侧应打开快捷对话。 */
     public static final String EVENT_CLICK = "click";
 
+    /** 角色移动：GLaDOS 侧应更新气泡位置。payload 为坐标 JSON。 */
+    public static final String EVENT_MOVE = "move";
+
+    /** move 事件最小上报间隔（毫秒）。走路时每帧位置都在变，全量上报会写爆文件。 */
+    private static final long MOVE_MIN_INTERVAL_MS = 200;
+
+    /** move 事件坐标变化阈值（像素）。亚像素抖动不上报。 */
+    private static final int MOVE_MIN_DELTA = 2;
+
     private static volatile String homeDir;
     private static long sequence;
+    private static volatile long lastMoveAt;
+    private static volatile int lastMoveX;
+    private static volatile int lastMoveY;
+    private static volatile int lastMoveW;
+    private static volatile int lastMoveH;
 
     private GladosEventReporter() {
     }
@@ -61,6 +75,16 @@ public final class GladosEventReporter {
      * @param type 事件类型，见本类常量
      */
     public static void report(String type) {
+        report(type, null);
+    }
+
+    /**
+     * 上报一次带 payload 的事件。
+     *
+     * @param type    事件类型
+     * @param payload 可选 JSON 文本；为 null 时文件内容只写类型名
+     */
+    public static void report(String type, String payload) {
         if (!isEnabled() || type == null) {
             return;
         }
@@ -75,10 +99,58 @@ public final class GladosEventReporter {
             }
             Path tmp = dir.resolve(name + ".tmp");
             Path target = dir.resolve(name);
-            Files.write(tmp, type.getBytes(StandardCharsets.UTF_8));
+            String content = (payload == null || payload.isEmpty()) ? type : type + "\n" + payload;
+            Files.write(tmp, content.getBytes(StandardCharsets.UTF_8));
             Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             log.warn("Failed to report GLaDOS event {}: {}", type, e.getMessage());
+        }
+    }
+
+    /**
+     * 上报角色移动（带节流）。
+     * <p>
+     * 走路时每帧位置都在变，全量上报会写爆事件目录。这里做两级过滤：
+     * <ul>
+     *   <li>时间：距上次上报不足 {@value #MOVE_MIN_INTERVAL_MS}ms 丢弃；</li>
+     *   <li>位移：坐标变化小于 {@value #MOVE_MIN_DELTA}px 丢弃（亚像素抖动）。</li>
+     * </ul>
+     *
+     * @param x      角色窗口左上角 x
+     * @param y      角色窗口左上角 y
+     * @param width  角色窗口宽
+     * @param height 角色窗口高
+     */
+    public static void reportMascotMove(int x, int y, int width, int height) {
+        if (!isEnabled()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        synchronized (GladosEventReporter.class) {
+            if (now - lastMoveAt < MOVE_MIN_INTERVAL_MS) {
+                return;
+            }
+            if (Math.abs(x - lastMoveX) < MOVE_MIN_DELTA && Math.abs(y - lastMoveY) < MOVE_MIN_DELTA) {
+                return;
+            }
+            lastMoveAt = now;
+            lastMoveX = x;
+            lastMoveY = y;
+            lastMoveW = width;
+            lastMoveH = height;
+        }
+        String payload = "{\"x\":" + x + ",\"y\":" + y + ",\"width\":" + width + ",\"height\":" + height + "}";
+        report(EVENT_MOVE, payload);
+    }
+
+    /** 测试用：重置节流状态（静态量会在用例间串味）。 */
+    static void resetMoveThrottleForTest() {
+        synchronized (GladosEventReporter.class) {
+            lastMoveAt = 0;
+            lastMoveX = Integer.MIN_VALUE;
+            lastMoveY = Integer.MIN_VALUE;
+            lastMoveW = 0;
+            lastMoveH = 0;
         }
     }
 }
