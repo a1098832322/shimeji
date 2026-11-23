@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kind": "skin",
+  "id": "whale-maid",
+  "version": "1.0.0",
+  "displayName": "蓝鲸女仆",
+  "engine": "shimeji",
+  "engineRange": ">=1.0.0 <2.0.0",
+  "engineVersion": "1.1.0",
+  "author": "zhenglong",
+  "license": "GPL-3.0",
+  "licenseFile": "LICENSE.txt",
+  "description": "蓝发鲸鱼女仆 Shimeji 皮肤，46 帧全套姿势，含站立/行走/坐姿/爬墙/攀顶/挣扎/分裂等动作。"
+}

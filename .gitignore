@@ -34,3 +34,4 @@ hs_err_pid*
 
 # 设计器运行时数据（备份 / 预览进程 / 缩略图缓存 / 扩展包注册表），随机器变化，不入库
 /.studio/
+/src/main/resources/img/小玥玥/
