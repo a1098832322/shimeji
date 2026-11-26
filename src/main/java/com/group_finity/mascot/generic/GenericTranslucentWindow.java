@@ -56,6 +56,14 @@ class GenericTranslucentWindow extends JWindow implements TranslucentWindow {
 	}
 
 	@Override
+	public void addNotify() {
+		super.addNotify();
+		if (com.sun.jna.Platform.isLinux()) {
+			LinuxWindowSpaces.showOnAllWorkspaces(this);
+		}
+	}
+
+	@Override
 	public void setVisible(final boolean b) {
 		super.setVisible(b);
 		if (b) {

@@ -1,8 +1,12 @@
 package com.group_finity.mascot.mac;
 
 import java.awt.Component;
+import java.awt.event.HierarchyEvent;
+import java.io.File;
+import java.util.UUID;
 import javax.swing.JRootPane;
 import javax.swing.JWindow;
+import javax.swing.SwingUtilities;
 
 import com.group_finity.mascot.image.TranslucentWindow;
 import com.group_finity.mascot.NativeFactory;
@@ -15,7 +19,21 @@ class MacTranslucentWindow implements TranslucentWindow {
 
 	MacTranslucentWindow(NativeFactory factory) {
 		delegate = factory.newTransparentWindow();
-    JRootPane rootPane = ( (JWindow)delegate.asComponent( ) ).getRootPane();
+    JWindow window = (JWindow) delegate.asComponent();
+    JRootPane rootPane = window.getRootPane();
+
+    // JNA's AWT window handle is not available on modern macOS JDKs. A unique
+    // represented filename lets AppKit identify this window without private JDK APIs.
+    String marker = new File(System.getProperty("java.io.tmpdir"),
+        "shimeji-window-" + UUID.randomUUID()).getAbsolutePath();
+    rootPane.putClientProperty("Window.documentFile", new File(marker));
+    window.addHierarchyListener(event -> {
+      if ((event.getChangeFlags() & HierarchyEvent.DISPLAYABILITY_CHANGED) != 0 && window.isDisplayable()) {
+        SwingUtilities.invokeLater(() -> {
+          if (window.isDisplayable()) MacWindowSpaces.showOnAllSpaces(marker);
+        });
+      }
+    });
 
     // ウィンドウの影がずれるので、影を描画しないようにする
     rootPane.putClientProperty("Window.shadow", Boolean.FALSE);

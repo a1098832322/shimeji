@@ -36,6 +36,18 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 		// 确保窗口可以显示
 		setAlwaysOnTop(true);
 	}
+
+	@Override
+	public void addNotify() {
+		super.addNotify();
+		WindowsWindowSpaces.register(this);
+	}
+
+	@Override
+	public void removeNotify() {
+		WindowsWindowSpaces.unregister(this);
+		super.removeNotify();
+	}
 	
 	@Override
 	public Component asComponent() {
