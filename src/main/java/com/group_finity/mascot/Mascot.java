@@ -632,6 +632,7 @@ public class Mascot
         }
 
         animating = false;
+        GladosEventReporter.forgetMascot(getInstanceId());
         getWindow( ).dispose( );
         affordances.clear( );
         if( getManager( ) != null )

@@ -152,6 +152,12 @@ public final class GladosEventReporter {
         reportContent(EVENT_CLICK, "{\"type\":\"click\",\"id\":\"" + lastClickedId + "\",\"ts\":" + System.currentTimeMillis() + "}");
     }
 
+    /** Drop per-instance throttle state when a mascot is removed. */
+    public static synchronized void forgetMascot(String id) {
+        moves.remove(id);
+        if (id != null && id.equals(lastClickedId)) lastClickedId = null;
+    }
+
     public static void reportMascotMove(com.group_finity.mascot.Mascot mascot, int x, int y, int width, int height) {
         if (!isEnabled() || mascot.getManager() == null) return;
         com.group_finity.mascot.Manager manager = mascot.getManager();
@@ -171,6 +177,8 @@ public final class GladosEventReporter {
     /** 测试用：重置节流状态（静态量会在用例间串味）。 */
     static void resetMoveThrottleForTest() {
         synchronized (GladosEventReporter.class) {
+            moves.clear();
+            lastClickedId = null;
             lastMoveAt = 0;
             lastMoveX = Integer.MIN_VALUE;
             lastMoveY = Integer.MIN_VALUE;

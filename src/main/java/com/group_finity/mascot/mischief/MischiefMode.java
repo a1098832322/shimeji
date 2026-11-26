@@ -22,6 +22,11 @@ public final class MischiefMode {
         move.run();
         return true;
     }
+    static synchronized boolean runIfEnabled(Runnable action) {
+        if (!enabled) return false;
+        action.run();
+        return true;
+    }
     public static int frequency(String name, int normal) { return enabled ? FREQUENCIES.getOrDefault(name, normal) : normal; }
     public static synchronized void set(Properties properties, boolean value, boolean cursor) {
         if (value && !enabled) {
