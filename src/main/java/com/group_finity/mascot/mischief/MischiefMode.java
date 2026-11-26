@@ -13,7 +13,9 @@ public final class MischiefMode {
     private static final Map<String, Integer> FREQUENCIES = Map.ofEntries(
         Map.entry("SitDown", 50), Map.entry("LieDown", 40), Map.entry("SitWhileDanglingLegs", 30),
         Map.entry("WalkAlongWorkAreaFloor", 300), Map.entry("RunAlongWorkAreaFloor", 200),
-        Map.entry("JumpFromBottomOfIE", 150), Map.entry("ChaseMouse", 75), Map.entry("SplitIntoTwo", 200), Map.entry("PullUpShimeji", 200));
+        Map.entry("JumpFromBottomOfIE", 150), Map.entry("ChaseMouse", 75), Map.entry("SplitIntoTwo", 200), Map.entry("PullUpShimeji", 200),
+        Map.entry("ThrowIEFromLeft", 120), Map.entry("ThrowIEFromRight", 120),
+        Map.entry("WalkAndThrowIEFromLeft", 100), Map.entry("WalkAndThrowIEFromRight", 100));
     private MischiefMode() {}
     public static boolean isEnabled() { return enabled; }
     public static boolean isCursorEnabled() { return enabled && pushCursor; }
@@ -33,12 +35,12 @@ public final class MischiefMode {
             previousBreeding = properties.getProperty("Breeding", "true");
             previousThrowing = properties.getProperty("Throwing", "true");
             properties.setProperty("Breeding", "true");
-            // Never run the original unrestricted ThrowIE in this mode: it has no recoverable journal.
-            properties.setProperty("Throwing", "false");
+            properties.setProperty("Throwing", Boolean.toString(RecoverableWindowMoves.supported()));
         } else if (!value && enabled) {
             properties.setProperty("Breeding", previousBreeding);
             properties.setProperty("Throwing", previousThrowing);
         }
+        RecoverableWindowMoves.setEnabled(value);
         if (!value) VisualIcon.close();
         pushCursor = cursor;
         enabled = value;
@@ -46,7 +48,7 @@ public final class MischiefMode {
     public static JSONObject status() {
         JSONObject result = new JSONObject();
         result.put("enabled", enabled);
-        result.put("throwWindow", "unsupported");
+        result.put("throwWindow", RecoverableWindowMoves.supported() ? "supported" : "unsupported");
         result.put("eatIcon", "visual");
         result.put("pushCursor", CursorPush.capability());
         result.put("pushCursorEnabled", pushCursor);

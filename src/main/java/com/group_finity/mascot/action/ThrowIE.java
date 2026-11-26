@@ -53,6 +53,15 @@ public class ThrowIE extends Animate
     {
         super.tick( );
 
+        if (com.group_finity.mascot.mischief.MischiefMode.isEnabled()) {
+            Area active = getEnvironment().getActiveIE();
+            double scale = com.group_finity.mascot.util.DPIScaler.getSystemScaleFactor();
+            com.group_finity.mascot.mischief.RecoverableWindowMoves.request(getMascot().isLookRight(),
+                (int) Math.round(active.getLeft() * scale), (int) Math.round(active.getTop() * scale),
+                (int) Math.round(active.getWidth() * scale), (int) Math.round(active.getHeight() * scale));
+            return;
+        }
+
         final Area activeIE = getEnvironment( ).getActiveIE( );
 
         if( activeIE.isVisible( ) )

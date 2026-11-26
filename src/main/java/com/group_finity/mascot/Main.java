@@ -144,6 +144,11 @@ public class Main {
         //load setting
         properties = OriginEngineFix.getInstance().getInstanceSettingProp();
 
+        String recoveryHome = gladosOptions.getHome();
+        java.nio.file.Path recoveryDir = recoveryHome != null && !recoveryHome.trim().isEmpty()
+                ? java.nio.file.Paths.get(recoveryHome) : java.nio.file.Paths.get(System.getProperty("user.home"), ".shimeji");
+        com.group_finity.mascot.mischief.RecoverableWindowMoves.initialize(recoveryDir.resolve("mischief-restore.json"));
+
         // GLaDOS 托管模式：禁止自主增殖（SplitIntoTwo / PullUpShimeji）。
         if (gladosOptions.isManaged()) {
             properties.setProperty("Breeding", "false");
@@ -1117,6 +1122,7 @@ public class Main {
 
     public void exit() {
         com.group_finity.mascot.mischief.MischiefMode.set(properties, false, false);
+        com.group_finity.mascot.mischief.RecoverableWindowMoves.shutdown();
         // 先停桥，避免 GLaDOS 侧收到端口文件后连不上
         if (gladosBridge != null) {
             gladosBridge.stop();
