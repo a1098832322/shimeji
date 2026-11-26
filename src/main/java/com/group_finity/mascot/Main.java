@@ -150,6 +150,10 @@ public class Main {
             log.info("GLaDOS managed mode: disable autonomous breeding");
         }
 
+        if (Boolean.parseBoolean(properties.getProperty("MischiefMode", "false")))
+            com.group_finity.mascot.mischief.MischiefMode.set(properties, true,
+                Boolean.parseBoolean(properties.getProperty("Mischief.PushCursorEnabled", "false")));
+
         // load langauges
         try {
             loadLanguageProp();
@@ -912,7 +916,12 @@ public class Main {
             mascot.setBehavior(config.buildNextBehavior(null, mascot));
             // buildNextBehavior may relocate an off-screen mascot; restore the requested clone anchor.
             if (anchor != null) mascot.setAnchor(new Point(anchor));
-            this.getManager().add(mascot);
+            if ("clone".equals(origin)) {
+                int limit;
+                try { limit = Math.max(1, Integer.parseInt(properties.getProperty("Glados.MaxInstances", "8"))); }
+                catch (NumberFormatException e) { limit = 8; }
+                if (!this.getManager().addIfBelowLimit(mascot, limit)) { mascot.dispose(); return null; }
+            } else this.getManager().add(mascot);
             
             // 仅在设置了 -Ddebugwindow=true 时自动打开 DebugWindow
             if (com.wishes.constant.Constant.autoOpenDebugWindow) {
@@ -1107,6 +1116,7 @@ public class Main {
     }
 
     public void exit() {
+        com.group_finity.mascot.mischief.MischiefMode.set(properties, false, false);
         // 先停桥，避免 GLaDOS 侧收到端口文件后连不上
         if (gladosBridge != null) {
             gladosBridge.stop();

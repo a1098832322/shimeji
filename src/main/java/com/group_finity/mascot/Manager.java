@@ -184,6 +184,14 @@ public class Manager {
 		mascot.setManager(this);
 	}
 
+    public boolean addIfBelowLimit(final Mascot mascot, int limit) {
+        synchronized (this.getMascots()) {
+            if (getMascotsForBridge().size() >= limit) return false;
+            add(mascot);
+            return true;
+        }
+    }
+
 	public void remove(final Mascot mascot) {
 		synchronized (this.getAdded()) {
 			this.getAdded().remove(mascot);

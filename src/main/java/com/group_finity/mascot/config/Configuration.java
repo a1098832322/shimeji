@@ -38,6 +38,7 @@ public class Configuration
     /** 每个 Action 的来源文件，用于区分「跨文件覆盖」与「单文件内重复」（FR-02）。 */
     private final Map<String, String> actionSources = new LinkedHashMap<String, String>( );
     private final Map<String, BehaviorBuilder> behaviorBuilders = new LinkedHashMap<String, BehaviorBuilder>( );
+    private final Map<String, BehaviorBuilder> originalBreedingBehaviors = new LinkedHashMap<>();
     /** 每个 Behavior 的来源文件，供设计器图层视图显示（与 actionSources 对称，只读）。 */
     private final Map<String, String> behaviorSources = new LinkedHashMap<String, String>( );
     private final Map<String, String> information = new LinkedHashMap<String, String>( 8 );
@@ -150,6 +151,10 @@ public class Configuration
      */
     public void loadGladosBehaviors( final Entry gladosNode )
     {
+        for (String name : new String[]{"SplitIntoTwo", "PullUpShimeji"}) {
+            BehaviorBuilder original = behaviorBuilders.get(name);
+            if (original != null) originalBreedingBehaviors.putIfAbsent(name, original);
+        }
         for( final Entry list : gladosNode.selectChildren( schema.getString( "BehaviourList" ) ) )
         {
             loadBehaviors( list, new ArrayList<String>( ) );
@@ -232,8 +237,10 @@ public class Configuration
 
         final List<BehaviorBuilder> candidates = new ArrayList<BehaviorBuilder>( );
         long totalFrequency = 0;
-        for( final BehaviorBuilder behaviorFactory : this.getBehaviorBuilders( ).values( ) )
+        for( final BehaviorBuilder configured : this.getBehaviorBuilders( ).values( ) )
         {
+            final BehaviorBuilder behaviorFactory = com.group_finity.mascot.mischief.MischiefMode.isEnabled()
+                ? originalBreedingBehaviors.getOrDefault(configured.getName(), configured) : configured;
             try
             {
                 if( behaviorFactory.isEffective( context ) && isBehaviorEnabled( behaviorFactory, mascot ) )
@@ -342,7 +349,7 @@ public class Configuration
         // 在存在覆盖文件时是「替换」而非「合并」内置表——用户自定义的
         // --glados-home/glados-behaviors.xml 会让内置的 Frequency=0 声明失效。
         // 在选行为时硬过滤，与配置来源无关，任何覆盖文件都绕不过去。
-        if( GladosOptions.isManagedProcess( ) && GladosManagedConstraints.isBreedingBehavior( builder.getName( ) ) )
+        if( GladosOptions.isManagedProcess( ) && GladosManagedConstraints.isBreedingBehavior( builder.getName( ) ) && !com.group_finity.mascot.mischief.MischiefMode.isEnabled() )
         {
             return false;
         }

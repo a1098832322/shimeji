@@ -156,6 +156,7 @@ public final class GladosBridge {
         body.put("paused", manager.isPaused());
         body.put("behavior", currentBehavior());
         body.put("managed", true);
+        body.put("mischief", com.group_finity.mascot.mischief.MischiefMode.status());
         body.put("version", com.wishes.constant.Constant.CURRENT_VERSION);
         JSONArray mascots = new JSONArray();
         for (Mascot mascot : manager.getMascotsForBridge()) {
@@ -233,6 +234,16 @@ public final class GladosBridge {
                 return setRole(params.get("role"));
             case SET_BEHAVIOR:
                 return setBehavior(params.get("behavior"), params.get("role"), params.get("target"));
+            case SET_MISCHIEF:
+                String enabled = params.get("enabled");
+                String cursor = params.getOrDefault("pushCursor", "false");
+                if (!("true".equals(enabled) || "false".equals(enabled)) || !("true".equals(cursor) || "false".equals(cursor)))
+                    throw new IllegalArgumentException("enabled and pushCursor must be boolean");
+                com.group_finity.mascot.mischief.MischiefMode.set(Main.getInstance().getProperties(), Boolean.parseBoolean(enabled), Boolean.parseBoolean(cursor));
+                return okJson();
+            case MISCHIEF_RESTORE:
+                com.group_finity.mascot.mischief.MischiefMode.set(Main.getInstance().getProperties(), false, false);
+                return okJson();
             case CLONE:
                 return cloneMascots(params);
             case DISPOSE:

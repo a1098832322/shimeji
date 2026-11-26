@@ -176,7 +176,7 @@ public class BehaviorBuilder {
 	
     public boolean isEffective(final VariableMap context) throws VariableException
     {
-        if( frequency == 0 )
+        if( getFrequency() == 0 )
             return false;
 
         for( final String condition : getConditions( ) )
@@ -198,7 +198,7 @@ public class BehaviorBuilder {
 	}
 
 	public int getFrequency() {
-		return this.frequency;
+		return com.group_finity.mascot.mischief.MischiefMode.frequency(this.name, this.frequency);
 	}
 
     public boolean isHidden( )

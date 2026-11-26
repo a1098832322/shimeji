@@ -95,7 +95,13 @@ public class Breed extends Animate
                 try
                 {
                     mascot.setBehavior( Main.getInstance( ).getConfiguration( childType ).buildBehavior( getBornBehaviour( ), action.getMascot( ) ) );
-                    action.getMascot( ).getManager( ).add( mascot );
+                    com.group_finity.mascot.Manager manager = action.getMascot().getManager();
+                    if (com.group_finity.mascot.glados.GladosOptions.isManagedProcess()) {
+                        int limit;
+                        try { limit = Math.max(1, Integer.parseInt(Main.getInstance().getProperties().getProperty("Glados.MaxInstances", "8"))); }
+                        catch (NumberFormatException e) { limit = 8; }
+                        if (manager == null || !manager.addIfBelowLimit(mascot, limit)) mascot.dispose();
+                    } else manager.add(mascot);
                 }
                 catch( final BehaviorInstantiationException e )
                 {

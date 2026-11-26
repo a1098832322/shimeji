@@ -489,6 +489,10 @@ public class Mascot
             }
         }
 
+        final JCheckBoxMenuItem mischief = new JCheckBoxMenuItem("调皮模式", com.group_finity.mascot.mischief.MischiefMode.isEnabled());
+        mischief.addActionListener(e -> com.group_finity.mascot.mischief.MischiefMode.set(
+            Main.getInstance().getProperties(), mischief.isSelected(), false));
+        popup.add(mischief);
         popup.add( increaseMenu );
         popup.add( new JSeparator( ) );
         popup.add( gatherMenu );

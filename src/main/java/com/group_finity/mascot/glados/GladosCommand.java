@@ -18,6 +18,8 @@ public enum GladosCommand {
 
     SET_ROLE("setRole", "role"),
     SET_BEHAVIOR("setBehavior", "behavior"),
+    SET_MISCHIEF("setMischief", "enabled"),
+    MISCHIEF_RESTORE("mischiefRestore"),
     CLONE("clone"),
     DISPOSE("dispose", "target"),
     SET_PRIMARY("setPrimary", "target"),
