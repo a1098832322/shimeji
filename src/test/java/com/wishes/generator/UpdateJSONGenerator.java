@@ -40,11 +40,11 @@ public class UpdateJSONGenerator {
     @Before
     public void before() {
         data = new DataAnalysis();
-        // 版本号从 pom.xml 中获取，当前版本为 1.1.0
-        data.setVersion("1.1.0");
+        // 版本号由 pom.xml 通过资源过滤提供
+        data.setVersion(Constant.CURRENT_VERSION);
         // 精炼后的更新内容（不超过100字）
-        data.setMessage("支持MacOS 26系统;迁移至Logback日志框架并实现分级输出;新增可选调试窗口;修复所有已知CVE安全漏洞;优化DPI缩放支持;修复多项平台兼容性Bug,提升稳定性。");
-        data.setUrl("https://wishes-blog.cn/shimeji/1.1.0/shimeji.jar");
+        data.setMessage("新增桌宠克隆与多实例控制，支持调皮模式、受限繁殖、可选鼠标推动及假装吃图标效果。");
+        data.setUrl("https://wishes-blog.cn/shimeji/" + Constant.CURRENT_VERSION + "/shimeji.jar");
         data.setUpdateType(Constant.UPDATE_TYPE.MAIN.getType());
     }
 
