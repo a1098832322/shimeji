@@ -147,8 +147,12 @@ public final class GladosBridge {
      */
     JSONObject buildStatusBody() {
         JSONObject body = new JSONObject();
-        body.put("role", shortRole(manager.getActiveRole()));
-        body.put("count", manager.getCount());
+        Mascot primary = manager.getPrimaryMascot();
+        body.put("role", primary == null ? null : shortRole(primary.getImageSet()));
+        body.put("count", manager.getMascotsForBridge().size());
+        body.put("instances", manager.getMascotsForBridge().size());
+        body.put("maxInstances", maxInstances());
+        body.put("primaryId", primary == null ? null : primary.getInstanceId());
         body.put("paused", manager.isPaused());
         body.put("behavior", currentBehavior());
         body.put("managed", true);
@@ -156,6 +160,11 @@ public final class GladosBridge {
         JSONArray mascots = new JSONArray();
         for (Mascot mascot : manager.getMascotsForBridge()) {
             JSONObject entry = new JSONObject();
+            entry.put("id", mascot.getInstanceId());
+            entry.put("role", shortRole(mascot.getImageSet()));
+            entry.put("origin", mascot == primary ? "primary" : ("primary".equals(mascot.getOrigin()) ? "clone" : mascot.getOrigin()));
+            entry.put("behavior", behaviorName(mascot));
+            entry.put("paused", mascot.isPaused());
             Rectangle bounds = mascot.getBounds();
             entry.put("x", bounds.x);
             entry.put("y", bounds.y);
@@ -218,12 +227,20 @@ public final class GladosBridge {
     /**
      * 执行命令，返回响应 JSON 字符串。
      */
-    private String execute(GladosCommand cmd, Map<String, String> params) {
+    private synchronized String execute(GladosCommand cmd, Map<String, String> params) {
         switch (cmd) {
             case SET_ROLE:
                 return setRole(params.get("role"));
             case SET_BEHAVIOR:
-                return setBehavior(params.get("behavior"), params.get("role"));
+                return setBehavior(params.get("behavior"), params.get("role"), params.get("target"));
+            case CLONE:
+                return cloneMascots(params);
+            case DISPOSE:
+                for (Mascot m : select(params.get("target"), false)) m.dispose();
+                return okJson();
+            case SET_PRIMARY:
+                if (!manager.setPrimary(params.get("target"))) throw new IllegalArgumentException("unknown target: " + params.get("target"));
+                return okJson();
             case PAUSE:
                 if (!manager.isPaused()) {
                     manager.togglePauseAll();
@@ -274,31 +291,76 @@ public final class GladosBridge {
         return okJson();
     }
 
-    private String setBehavior(String behavior, String role) {
-        if (behavior == null || behavior.trim().isEmpty()) {
-            return errorJson("missing behavior");
-        }
-        if (BEHAVIOR_IDLE.equals(behavior)) {
-            // idle：回到自主行为树
-            for (Mascot mascot : manager.getMascotsForBridge()) {
-                Configuration config = Main.getInstance().getConfiguration(mascot.getImageSet());
-                if (config == null) {
-                    continue;
-                }
-                try {
-                    mascot.setBehavior(config.buildNextBehavior(null, mascot));
-                } catch (Exception e) {
-                    log.warn("Failed to reset to autonomous behavior for {}: {}", mascot.getImageSet(), e.getMessage());
-                }
-            }
-            return okJson();
-        }
+    private String setBehavior(String behavior, String role, String target) {
         String full = role == null ? null : resolveRole(role);
-        int applied = manager.setBehaviorAllByName(behavior, full);
-        if (applied == 0) {
-            return errorJson("unknown behavior: " + behavior);
+        if (role != null && full == null) return errorJson("unknown role: " + role);
+        int applied = 0;
+        java.util.List<Mascot> selected = select(target, true);
+        for (Mascot mascot : selected) {
+            if (full != null && !full.equals(mascot.getImageSet())) continue;
+            Configuration config = Main.getInstance().getConfiguration(mascot.getImageSet());
+            if (config == null) continue;
+            try {
+                mascot.setBehavior(BEHAVIOR_IDLE.equals(behavior)
+                    ? config.buildNextBehavior(null, mascot) : config.buildBehavior(behavior, mascot));
+                applied++;
+            } catch (Exception e) { log.warn("Failed to set behavior {}: {}", behavior, e.getMessage()); }
         }
-        return okJson();
+        return applied > 0 || ("followers".equals(target) && selected.isEmpty()) ? okJson() : errorJson("unknown behavior: " + behavior);
+    }
+
+    private int maxInstances() {
+        try { return Math.max(1, Integer.parseInt(Main.getInstance().getProperties().getProperty("Glados.MaxInstances", "8"))); }
+        catch (Exception e) { return 8; }
+    }
+
+    private java.util.List<Mascot> select(String target, boolean allowGroups) {
+        java.util.List<Mascot> live = manager.getMascotsForBridge();
+        Mascot primary = manager.getPrimaryMascot();
+        if (target == null || "all".equals(target)) {
+            if (!allowGroups) throw new IllegalArgumentException("unknown target: " + target);
+            return live;
+        }
+        java.util.List<Mascot> result = new java.util.ArrayList<>();
+        if ("followers".equals(target)) {
+            for (Mascot m : live) if (m != primary) result.add(m);
+            return result;
+        }
+        if ("primary".equals(target)) { if (primary != null) result.add(primary); }
+        else if ("nearest".equals(target) && allowGroups) {
+            java.awt.PointerInfo pointer = java.awt.MouseInfo.getPointerInfo();
+            if (pointer != null) live.stream().min(java.util.Comparator.comparingDouble(m -> {
+                Rectangle b = m.getBounds(); return pointer.getLocation().distanceSq(b.getCenterX(), b.getCenterY());
+            })).ifPresent(result::add);
+        } else for (Mascot m : live) if (m.getInstanceId().equals(target)) result.add(m);
+        if (result.isEmpty()) throw new IllegalArgumentException("unknown target: " + target);
+        return result;
+    }
+
+    private String cloneMascots(Map<String, String> params) {
+        int count;
+        try { count = Integer.parseInt(params.getOrDefault("count", "1")); }
+        catch (NumberFormatException e) { throw new IllegalArgumentException("invalid count"); }
+        if (count < 1) throw new IllegalArgumentException("invalid count");
+        if (count > maxInstances() - manager.getMascotsForBridge().size()) return errorJson("instance limit reached (" + maxInstances() + ")");
+        String anchorId = params.get("anchorId");
+        if (anchorId != null && !anchorId.matches("mascot-[0-9]+")) throw new IllegalArgumentException("unknown anchorId: " + anchorId);
+        Mascot anchor = select(anchorId == null ? "primary" : anchorId, false).get(0);
+        String role = params.get("role");
+        String full = role == null ? anchor.getImageSet() : resolveRole(role);
+        if (full == null) return errorJson("unknown role: " + role);
+        ensureConfiguration(full);
+        JSONArray ids = new JSONArray();
+        java.util.List<Mascot> made = new java.util.ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            java.awt.Point point = new java.awt.Point(anchor.getAnchor());
+            point.translate(30 * (i + 1), 0);
+            Mascot m = Main.getInstance().createMascotInstance(full, point, "clone");
+            if (m == null) { for (Mascot created : made) created.dispose(); return errorJson("failed to create clone"); }
+            made.add(m); ids.add(m.getInstanceId());
+        }
+        JSONObject response = new JSONObject(); response.put("ok", true); response.put("created", ids);
+        return response.toJSONString();
     }
 
     private String createMascot(String role) {
@@ -384,18 +446,14 @@ public final class GladosBridge {
     /**
      * 当前行为名：取第一个角色的 behavior 名称（若有）。
      */
-    private String currentBehavior() {
-        for (Mascot mascot : manager.getMascotsForBridge()) {
-            Behavior b = mascot.getBehavior();
-            if (b != null) {
-                String s = b.toString();
-                if (s != null && s.startsWith("Behavior(") && s.endsWith(")")) {
-                    return s.substring("Behavior(".length(), s.length() - 1);
-                }
-                return s;
-            }
-        }
-        return null;
+    private String currentBehavior() { return behaviorName(manager.getPrimaryMascot()); }
+
+    private String behaviorName(Mascot mascot) {
+        Behavior b = mascot == null ? null : mascot.getBehavior();
+        if (b == null) return null;
+        String value = b.toString();
+        return value != null && value.startsWith("Behavior(") && value.endsWith(")")
+            ? value.substring(9, value.length() - 1) : value;
     }
 
     private static String okJson() {

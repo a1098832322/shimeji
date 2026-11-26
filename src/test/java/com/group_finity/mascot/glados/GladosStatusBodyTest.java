@@ -44,5 +44,8 @@ public class GladosStatusBodyTest {
         assertTrue(body.containsKey("behavior"));
         assertTrue(body.containsKey("managed"));
         assertTrue(body.containsKey("version"));
+        assertTrue(body.containsKey("primaryId"));
+        assertEquals(0, body.getIntValue("instances"));
+        assertEquals(8, body.getIntValue("maxInstances"));
     }
 }

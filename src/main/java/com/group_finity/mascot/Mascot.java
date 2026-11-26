@@ -64,6 +64,12 @@ public class Mascot
     private final int id;
 
     private String imageSet = "";
+    private String origin = "breed";
+
+    public String getInstanceId() { return "mascot-" + id; }
+    public int getInstanceNumber() { return id; }
+    public String getOrigin() { return origin; }
+    public void setOrigin(String value) { origin = value; }
     /**
      * A window that displays the mascot.
      */
@@ -278,7 +284,7 @@ public class Mascot
                 && event.getButton( ) == MouseEvent.BUTTON1
                 && !isDragGesture( event ) )
             {
-                GladosEventReporter.report( GladosEventReporter.EVENT_CLICK );
+                GladosEventReporter.reportClick(this);
             }
             // 本次手势结束，清空按下点，避免下一次释放沿用旧坐标
             pressPoint = null;
@@ -569,7 +575,7 @@ public class Mascot
                 // 只在受管模式下生效；非受管模式 isEnabled() 返回 false，零开销。
                 if (GladosOptions.isManagedProcess()) {
                     Rectangle bounds = getBounds();
-                    GladosEventReporter.reportMascotMove(bounds.x, bounds.y, bounds.width, bounds.height);
+                    GladosEventReporter.reportMascotMove(this, bounds.x, bounds.y, bounds.width, bounds.height);
                 }
 
                 // Set Images

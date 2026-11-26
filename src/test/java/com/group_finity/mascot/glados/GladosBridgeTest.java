@@ -25,6 +25,18 @@ import static org.junit.Assert.assertTrue;
  */
 public class GladosBridgeTest {
 
+    @Test
+    public void multiInstanceCommandsAreWhitelistedAndRequireTargets() {
+        assertEquals(GladosCommand.CLONE, GladosCommand.fromWireName("clone"));
+        assertEquals(GladosCommand.DISPOSE, GladosCommand.fromWireName("dispose"));
+        assertEquals(GladosCommand.SET_PRIMARY, GladosCommand.fromWireName("setPrimary"));
+        assertNotNull(GladosCommand.DISPOSE.validate(new HashMap<>()));
+        Map<String, String> params = new HashMap<>();
+        params.put("target", "mascot-1");
+        assertNull(GladosCommand.DISPOSE.validate(params));
+        assertNull(GladosCommand.SET_PRIMARY.validate(params));
+    }
+
     // ------------------------------------------------------------------
     // --glados-managed 解析
     // ------------------------------------------------------------------

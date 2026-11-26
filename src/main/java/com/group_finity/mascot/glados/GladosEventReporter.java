@@ -45,6 +45,8 @@ public final class GladosEventReporter {
     private static final int MOVE_MIN_DELTA = 2;
 
     private static volatile String homeDir;
+    private static volatile String lastClickedId;
+    private static final java.util.Map<String, long[]> moves = new java.util.HashMap<>();
     private static long sequence;
     private static volatile long lastMoveAt;
     private static volatile int lastMoveX;
@@ -85,9 +87,12 @@ public final class GladosEventReporter {
      * @param payload 可选 JSON 文本；为 null 时文件内容只写类型名
      */
     public static void report(String type, String payload) {
-        if (!isEnabled() || type == null) {
-            return;
-        }
+        String content = (payload == null || payload.isEmpty()) ? type : type + "\n" + payload;
+        reportContent(type, content);
+    }
+
+    private static void reportContent(String type, String content) {
+        if (!isEnabled() || type == null) return;
         try {
             Path dir = Paths.get(homeDir, EVENT_DIR);
             Files.createDirectories(dir);
@@ -99,7 +104,6 @@ public final class GladosEventReporter {
             }
             Path tmp = dir.resolve(name + ".tmp");
             Path target = dir.resolve(name);
-            String content = (payload == null || payload.isEmpty()) ? type : type + "\n" + payload;
             Files.write(tmp, content.getBytes(StandardCharsets.UTF_8));
             Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
@@ -141,6 +145,27 @@ public final class GladosEventReporter {
         }
         String payload = "{\"x\":" + x + ",\"y\":" + y + ",\"width\":" + width + ",\"height\":" + height + "}";
         report(EVENT_MOVE, payload);
+    }
+
+    public static void reportClick(com.group_finity.mascot.Mascot mascot) {
+        lastClickedId = mascot.getInstanceId();
+        reportContent(EVENT_CLICK, "{\"type\":\"click\",\"id\":\"" + lastClickedId + "\",\"ts\":" + System.currentTimeMillis() + "}");
+    }
+
+    public static void reportMascotMove(com.group_finity.mascot.Mascot mascot, int x, int y, int width, int height) {
+        if (!isEnabled() || mascot.getManager() == null) return;
+        com.group_finity.mascot.Manager manager = mascot.getManager();
+        com.group_finity.mascot.Mascot primary = manager.getPrimaryMascot();
+        String id = mascot.getInstanceId();
+        if (manager.getMascotsForBridge().size() > 3 && mascot != primary && !id.equals(lastClickedId)) return;
+        long now = System.currentTimeMillis();
+        synchronized (GladosEventReporter.class) {
+            long[] previous = moves.get(id);
+            if (previous != null && (now - previous[0] < MOVE_MIN_INTERVAL_MS ||
+                (Math.abs(x - previous[1]) < MOVE_MIN_DELTA && Math.abs(y - previous[2]) < MOVE_MIN_DELTA && width == previous[3] && height == previous[4]))) return;
+            moves.put(id, new long[]{now, x, y, width, height});
+        }
+        reportContent(EVENT_MOVE, "{\"type\":\"move\",\"id\":\"" + id + "\",\"x\":" + x + ",\"y\":" + y + ",\"width\":" + width + ",\"height\":" + height + "}");
     }
 
     /** 测试用：重置节流状态（静态量会在用例间串味）。 */

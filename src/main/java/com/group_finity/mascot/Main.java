@@ -884,14 +884,19 @@ public class Main {
      * Create a mascot
      */
     public void createMascot(String imageSet) {
+        createMascotInstance(imageSet, null, "primary");
+    }
+
+    public Mascot createMascotInstance(String imageSet, Point anchor, String origin) {
         log.info("create a mascot");
 
         // Create one mascot
         final Mascot mascot = new Mascot(imageSet);
+        mascot.setOrigin(origin);
 
         // 设置初始位置：X=10, Y=-1000（屏幕外顶部）
         // Shimeji 会从屏幕顶部掉落下来
-        mascot.setAnchor(new Point(10, -1000));
+        mascot.setAnchor(anchor == null ? new Point(10, -1000) : anchor);
 
         // Randomize the initial orientation
         mascot.setLookRight(Math.random() < 0.5);
@@ -902,9 +907,11 @@ public class Main {
                 log.error("Configuration not found for imageSet: {}", imageSet);
                 Main.showError(languageBundle.getProperty("CouldNotCreateShimejiErrorMessage") + imageSet + ".\n" + languageBundle.getProperty("SeeLogForDetails"));
                 mascot.dispose();
-                return;
+                return null;
             }
             mascot.setBehavior(config.buildNextBehavior(null, mascot));
+            // buildNextBehavior may relocate an off-screen mascot; restore the requested clone anchor.
+            if (anchor != null) mascot.setAnchor(new Point(anchor));
             this.getManager().add(mascot);
             
             // 仅在设置了 -Ddebugwindow=true 时自动打开 DebugWindow
@@ -924,6 +931,7 @@ public class Main {
             Main.showError(languageBundle.getProperty("CouldNotCreateShimejiErrorMessage") + imageSet + ".\n" + e.getMessage() + "\n" + languageBundle.getProperty("SeeLogForDetails"));
             mascot.dispose();
         }
+        return mascot.getManager() == null ? null : mascot;
     }
 
     private void refreshLanguage() {

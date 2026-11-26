@@ -18,6 +18,9 @@ public enum GladosCommand {
 
     SET_ROLE("setRole", "role"),
     SET_BEHAVIOR("setBehavior", "behavior"),
+    CLONE("clone"),
+    DISPOSE("dispose", "target"),
+    SET_PRIMARY("setPrimary", "target"),
     PAUSE("pause"),
     RESUME("resume"),
     CREATE_MASCOT("createMascot", "role"),

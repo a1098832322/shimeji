@@ -21,6 +21,20 @@ import java.awt.Point;
  * Currently developed by Shimeji-ee Group.
  */
 public class Manager {
+    private volatile String primaryId;
+
+    public Mascot getPrimaryMascot() {
+        List<Mascot> live = getMascotsForBridge();
+        for (Mascot m : live) if (m.getInstanceId().equals(primaryId)) return m;
+        Mascot first = live.stream().min(java.util.Comparator.comparingInt(Mascot::getInstanceNumber)).orElse(null);
+        primaryId = first == null ? null : first.getInstanceId();
+        return first;
+    }
+
+    public boolean setPrimary(String id) {
+        for (Mascot m : getMascotsForBridge()) if (m.getInstanceId().equals(id)) { primaryId = id; return true; }
+        return false;
+    }
 
 	private static final Logger log = LoggerFactory.getLogger(Manager.class);
 
@@ -466,12 +480,8 @@ public class Manager {
     }
 
 	public void disposeAll() {
-		synchronized (this.getMascots()) {
-			for (int i = this.getMascots().size() - 1; i >= 0; --i) {
-				this.getMascots().get(i).dispose();
-			}
-		}
-	}
+        for (Mascot mascot : getMascotsForBridge()) mascot.dispose();
+    }
 
 	/**
 	 * 返回当前角色列表（只读视图，供 GLaDOS 桥查询）。
@@ -492,6 +502,7 @@ public class Manager {
 				}
 			}
 		}
+		synchronized (this.getAdded()) { snapshot.removeAll(this.getRemoved()); }
 		return snapshot;
 	}
 }
