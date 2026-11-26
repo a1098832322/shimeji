@@ -536,6 +536,8 @@ public class Mascot
                     dispose( );
                 }
 
+                com.group_finity.mascot.mischief.CursorPush.tick(this);
+                com.group_finity.mascot.mischief.VisualIcon.tick(this);
                 setTime( getTime( ) + 1 );
             }
             
