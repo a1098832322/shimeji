@@ -54,16 +54,6 @@ public class ImagePairs
     }
 
     /**
-     * 清除属于指定 imageSet 的图片缓存，返回被清除的条目数。
-     * <p>
-     * 需求文档：docs/action-authoring-extensibility-requirements.md FR-04（D-3）。
-     * 既有的 {@link #removeAll(String)} 依赖 {@code Paths.get(filename).getName(2)}，
-     * 在 dev（{@code ./src/main/resources/img/<set>/...}）与
-     * prod（{@code ./img/<set>/...}）两种布局下取到的层级不同，不可靠。
-     * 本方法改为按「目录名片段」匹配，与 {@code AnimationBuilder.resolveImagePath}
-     * 拼出的路径保持一致。
-     */
-    /**
      * 缓存快照，用于「重载失败时精确回滚」（FR-03 AC-03-5）。
      * 重载必须先清缓存再重建配置，否则 {@code ImagePairLoader.load} 会因路径命中而短路、
      * 新增/替换的 PNG 不会生效；一旦重建失败，用本快照把缓存恢复原状。
@@ -82,6 +72,9 @@ public class ImagePairs
         }
     }
 
+    /**
+     * 按目录名片段清除指定 imageSet 的缓存，兼容开发与发行版的目录层级。
+     */
     public static int clearForImageSet( final String imageSet )
     {
         if( imageSet == null || imageSet.trim( ).isEmpty( ) || imagepairs.isEmpty( ) )
@@ -96,9 +89,9 @@ public class ImagePairs
         int removed = 0;
         for( final String key : new ArrayList<String>( imagepairs.keySet( ) ) )
         {
-            if( key.contains( marker ) )
+            // Windows accepts both separators. Keep the original key for cache lookups.
+            if( key.replace( '/', File.separatorChar ).contains( marker ) && imagepairs.remove( key ) != null )
             {
-                imagepairs.remove( key );
                 ++removed;
             }
         }

@@ -3,6 +3,7 @@ package com.group_finity.mascot.mischief;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import java.awt.Point;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -58,6 +59,23 @@ public final class RestoreJournal {
     }
 
     public synchronized List<JSONObject> pending() throws IOException { return read(); }
+
+    synchronized void discard(String id) throws IOException {
+        List<JSONObject> entries = read();
+        if (entries.removeIf(entry -> id.equals(entry.getString("id")))) write(entries);
+    }
+
+    synchronized void updateDestination(String id, Point destination) throws IOException {
+        List<JSONObject> entries = read();
+        for (JSONObject entry : entries) {
+            if (!id.equals(entry.getString("id"))) continue;
+            JSONObject identity = entry.getJSONObject("identity");
+            identity.put("movedX", destination.x);
+            identity.put("movedY", destination.y);
+            write(entries);
+            return;
+        }
+    }
 
     private List<JSONObject> read() throws IOException {
         List<JSONObject> result = new ArrayList<>();

@@ -49,7 +49,7 @@ public final class MischiefMode {
         JSONObject result = new JSONObject();
         result.put("enabled", enabled);
         result.put("throwWindow", RecoverableWindowMoves.supported() ? "supported" : "unsupported");
-        result.put("eatIcon", "visual");
+        result.put("eatIcon", RecoverableWindowMoves.supported() ? "supported" : "visual");
         result.put("pushCursor", CursorPush.capability());
         result.put("pushCursorEnabled", pushCursor);
         return result;

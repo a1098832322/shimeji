@@ -12,6 +12,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
+import javax.imageio.IIOException;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
@@ -20,6 +21,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -297,23 +299,51 @@ public class ConfigurationFilesTest {
     }
 
     @Test
+    public void corruptPoseImageReportsLocationAndDecoderException() throws Exception {
+        Path image = tmp.newFile("truncated.png").toPath().toAbsolutePath();
+        // A PNG signature with no image data exercises the decoder's error path.
+        Files.write(image, new byte[]{(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'});
+        File[] config = minimalConfig("<Action Name=\"Base\" Type=\"Stay\"><Animation>"
+                        + "<Pose Image=\"file:" + image + "\" ImageAnchor=\"1,1\" Velocity=\"0,0\" Duration=\"10\"/>"
+                        + "</Animation></Action>",
+                "<Behavior Name=\"Base\" Frequency=\"0\" Hidden=\"true\"/>");
+
+        try {
+            ConfigurationFiles.build(config[1].getAbsolutePath(), config[2].getAbsolutePath(), "Shimeji",
+                    config[1].getAbsolutePath(), config[2].getAbsolutePath());
+            fail("Expected a configuration error for the truncated PNG");
+        } catch (ConfigurationException e) {
+            Throwable imageError = e.getCause().getCause();
+            assertTrue(imageError.getMessage(), imageError.getMessage().contains(image.toString()));
+            assertTrue(imageError.getMessage(), imageError.getMessage().contains("Action[Base] Pose[1]"));
+            assertTrue(String.valueOf(imageError.getCause()), imageError.getCause() instanceof IIOException);
+        }
+    }
+
+    @Test
     public void imageCacheClearIsScopedAndCanBeRestoredFromSnapshot() {
+        Map<String, ImagePair> original = ImagePairs.snapshot();
         ImagePairs.clear();
-        BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-        MascotImage mi = new MascotImage(img, new Point(0, 0));
-        ImagePair pair = new ImagePair(mi, mi);
-        ImagePairs.load("./img/Shimeji/shime1.png", pair);
-        ImagePairs.load("./img/Miku/shime1.png", pair);
+        try {
+            BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+            MascotImage mi = new MascotImage(img, new Point(0, 0));
+            ImagePair pair = new ImagePair(mi, mi);
+            String nativePath = Paths.get(".", "img", "Shimeji", "shime2.png").toString();
+            ImagePairs.load("./img/Shimeji/shime1.png", pair);
+            ImagePairs.load(nativePath, pair);
+            ImagePairs.load("./img/Miku/shime1.png", pair);
 
-        Map<String, ImagePair> snapshot = ImagePairs.snapshot();
-        assertEquals(1, ImagePairs.clearForImageSet("/any/path/img/Shimeji"));
-        assertFalse(ImagePairs.contains("./img/Shimeji/shime1.png"));
-        assertTrue("只清目标角色，其他角色不受影响", ImagePairs.contains("./img/Miku/shime1.png"));
+            Map<String, ImagePair> snapshot = ImagePairs.snapshot();
+            assertEquals(2, ImagePairs.clearForImageSet("/any/path/img/Shimeji"));
+            assertFalse(ImagePairs.contains("./img/Shimeji/shime1.png"));
+            assertFalse(ImagePairs.contains(nativePath));
+            assertTrue("只清目标角色，其他角色不受影响", ImagePairs.contains("./img/Miku/shime1.png"));
 
-        ImagePairs.restore(snapshot);
-        assertTrue("失败回滚应精确恢复缓存", ImagePairs.contains("./img/Shimeji/shime1.png"));
-        assertTrue(ImagePairs.contains("./img/Miku/shime1.png"));
-        ImagePairs.clear();
+            ImagePairs.restore(snapshot);
+            assertEquals("失败回滚应精确恢复缓存", snapshot, ImagePairs.snapshot());
+        } finally {
+            ImagePairs.restore(original);
+        }
     }
 
     // ------------------------------------------------------------------

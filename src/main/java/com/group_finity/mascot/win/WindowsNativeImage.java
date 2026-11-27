@@ -1,6 +1,5 @@
 package com.group_finity.mascot.win;
 
-import com.group_finity.mascot.Main;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
@@ -10,7 +9,6 @@ import com.group_finity.mascot.image.NativeImage;
 import com.group_finity.mascot.win.jna.BITMAP;
 import com.group_finity.mascot.win.jna.BITMAPINFOHEADER;
 import com.group_finity.mascot.win.jna.Gdi32;
-import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 
 /**
@@ -41,6 +39,9 @@ class WindowsNativeImage implements NativeImage {
 
 		final Pointer hBitmap = Gdi32.INSTANCE.CreateDIBSection(
 				Pointer.NULL, bmi, Gdi32.DIB_RGB_COLORS, Pointer.NULL, Pointer.NULL, 0 );
+		if (hBitmap == null) {
+			throw new IllegalStateException("CreateDIBSection failed for a " + width + "x" + height + " bitmap");
+		}
 
 		return hBitmap;
 	}
@@ -53,7 +54,10 @@ class WindowsNativeImage implements NativeImage {
 	private static void flushNative(final Pointer nativeHandle, final int[] rgb) {
 
 		final BITMAP bmp = new BITMAP();
-                Gdi32.INSTANCE.GetObjectW( nativeHandle, Main.getInstance( ).getPlatform( ).getBitmapSize( ) + Native.POINTER_SIZE, bmp );
+		final int bitmapSize = bmp.size();
+		if (Gdi32.INSTANCE.GetObjectW(nativeHandle, bitmapSize, bmp) != bitmapSize || bmp.bmBits == null) {
+			throw new IllegalStateException("GetObjectW failed to retrieve the DIB section pixels");
+		}
 
 		// Copy at the pixel level. These dimensions are already scaled
 		int width = bmp.bmWidth;
@@ -101,19 +105,26 @@ class WindowsNativeImage implements NativeImage {
 	private final Pointer nativeHandle;
 
 	public WindowsNativeImage(final BufferedImage image) {
-
-	    this.managedImage = image;
-            this.nativeHandle = createNative(image.getWidth(), image.getHeight());
-            
-            int[] rbgValues = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
-            
-            flushNative(this.getNativeHandle(), rbgValues);
+		this.managedImage = image;
+		final int width = image.getWidth();
+		final int height = image.getHeight();
+		final int[] rgb = image.getRGB(0, 0, width, height, null, 0, width);
+		final Pointer bitmap = createNative(width, height);
+		try {
+			flushNative(bitmap, rgb);
+		} catch (RuntimeException | Error e) {
+			freeNative(bitmap);
+			throw e;
+		}
+		this.nativeHandle = bitmap;
 	}
 
 	@Override
 	protected void finalize() throws Throwable {
 		super.finalize();
-		freeNative(this.getNativeHandle());
+		if (nativeHandle != null) {
+			freeNative(nativeHandle);
+		}
 	}
 
     /**
@@ -174,8 +185,4 @@ class WindowsNativeImage implements NativeImage {
         return managedImage;
     }
 
-    private Pointer getNativeHandle( )
-    {
-        return nativeHandle;
-    }
 }

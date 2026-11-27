@@ -1,6 +1,7 @@
 package com.group_finity.mascot.action;
 
 import com.group_finity.mascot.Main;
+import com.group_finity.mascot.Mascot;
 import java.awt.Point;
 import java.util.List;
 import org.slf4j.Logger;
@@ -10,6 +11,7 @@ import com.group_finity.mascot.animation.Animation;
 import com.group_finity.mascot.environment.Area;
 import com.group_finity.mascot.exception.LostGroundException;
 import com.group_finity.mascot.exception.VariableException;
+import com.group_finity.mascot.mischief.MischiefMode;
 import com.group_finity.mascot.script.VariableMap;
 
 /**
@@ -32,14 +34,24 @@ public class ThrowIE extends Animate
 
     private static final double DEFAULT_GRAVITY = 0.5;
 
+    private boolean recoverable;
+
     public ThrowIE( java.util.ResourceBundle schema, final List<Animation> animations, final VariableMap params )
     {
         super( schema, animations, params );
     }
 
     @Override
+    public void init(Mascot mascot) throws VariableException
+    {
+        super.init(mascot);
+        recoverable = MischiefMode.isEnabled();
+    }
+
+    @Override
     public boolean hasNext( ) throws VariableException
     {
+        if (recoverable != MischiefMode.isEnabled()) return false;
         if( !Boolean.parseBoolean( Main.getInstance( ).getProperties( ).getProperty( "Throwing", "true" ) ) )
             return false;
 
@@ -51,14 +63,11 @@ public class ThrowIE extends Animate
     @Override
     protected void tick( ) throws LostGroundException, VariableException
     {
+        if (recoverable != MischiefMode.isEnabled()) return;
         super.tick( );
 
-        if (com.group_finity.mascot.mischief.MischiefMode.isEnabled()) {
-            Area active = getEnvironment().getActiveIE();
-            double scale = com.group_finity.mascot.util.DPIScaler.getSystemScaleFactor();
-            com.group_finity.mascot.mischief.RecoverableWindowMoves.request(getMascot().isLookRight(),
-                (int) Math.round(active.getLeft() * scale), (int) Math.round(active.getTop() * scale),
-                (int) Math.round(active.getWidth() * scale), (int) Math.round(active.getHeight() * scale));
+        if (recoverable) {
+            getEnvironment().throwActiveIE(getMascot().isLookRight());
             return;
         }
 

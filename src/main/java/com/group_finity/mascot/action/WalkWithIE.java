@@ -10,6 +10,7 @@ import com.group_finity.mascot.animation.Animation;
 import com.group_finity.mascot.environment.Area;
 import com.group_finity.mascot.exception.LostGroundException;
 import com.group_finity.mascot.exception.VariableException;
+import com.group_finity.mascot.mischief.MischiefMode;
 import com.group_finity.mascot.script.VariableMap;
 
 /**
@@ -36,7 +37,7 @@ public class WalkWithIE extends Move
     @Override
     public boolean hasNext( ) throws VariableException
     {
-        if( !Boolean.parseBoolean( Main.getInstance( ).getProperties( ).getProperty( "Throwing", "true" ) ) )
+        if( MischiefMode.isEnabled() || !Boolean.parseBoolean( Main.getInstance( ).getProperties( ).getProperty( "Throwing", "true" ) ) )
             return false;
 
         return super.hasNext( );

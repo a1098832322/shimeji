@@ -15,7 +15,14 @@ public class RecoverableWindowMovesTest {
         Path path = temporary.getRoot().toPath().resolve("mischief-restore.json");
         AtomicInteger position = new AtomicInteger(10);
         RecoverableWindowMoves.Backend backend = new RecoverableWindowMoves.Backend() {
-            public JSONObject capture() { JSONObject o = new JSONObject(); o.put("x", position.get()); o.put("y", 20); o.put("width", 100); o.put("height", 80); return o; }
+            public JSONObject capture(long handle) {
+                assertEquals(123L, handle);
+                JSONObject target = new JSONObject();
+                target.put("handle", handle);
+                target.put("x", position.get());
+                target.put("y", 20);
+                return target;
+            }
             public boolean move(JSONObject identity, int x, int y) throws Exception {
                 assertEquals(1, new RestoreJournal(path).pending().size()); position.set(x); return true;
             }
@@ -23,7 +30,7 @@ public class RecoverableWindowMovesTest {
         };
         RecoverableWindowMoves service = RecoverableWindowMoves.open(path, backend);
         service.setActive(true);
-        service.move(true, 10, 20, 100, 80);
+        service.move(true, 123);
         assertEquals(310, position.get());
         service.setActive(false);
         assertEquals(10, position.get());
@@ -43,12 +50,49 @@ public class RecoverableWindowMovesTest {
         java.nio.file.Files.write(path, new byte[]{42});
         AtomicInteger moves = new AtomicInteger();
         RecoverableWindowMoves.Backend backend = new RecoverableWindowMoves.Backend() {
-            public JSONObject capture() { return new JSONObject(); }
+            public JSONObject capture(long handle) { return new JSONObject(); }
             public boolean move(JSONObject i, int x, int y) { moves.incrementAndGet(); return true; }
             public boolean restore(JSONObject r) { return true; }
         };
         try { RecoverableWindowMoves.open(path, backend); fail("invalid journal"); }
         catch (java.io.IOException expected) { assertEquals(0, moves.get()); }
         assertEquals(42, java.nio.file.Files.readAllBytes(path)[0]);
+    }
+
+    @Test public void rejectedMoveDoesNotConsumeTheThrottleOrAffectAnotherWindow() throws Exception {
+        Path path = temporary.getRoot().toPath().resolve("mischief-restore.json");
+        AtomicInteger position = new AtomicInteger(10);
+        RecoverableWindowMoves.Backend backend = new RecoverableWindowMoves.Backend() {
+            public JSONObject capture(long handle) {
+                JSONObject target = new JSONObject();
+                target.put("handle", handle);
+                target.put("x", position.get());
+                return target;
+            }
+            public boolean move(JSONObject identity, int x, int y) {
+                if (identity.getLongValue("handle") == 123) return false;
+                position.set(x);
+                return true;
+            }
+            public boolean restore(JSONObject record) {
+                position.set(record.getIntValue("x"));
+                return true;
+            }
+        };
+        RecoverableWindowMoves service = RecoverableWindowMoves.open(path, backend);
+        try {
+            service.setActive(true);
+            service.move(true, 123);
+            assertEquals(10, position.get());
+            assertTrue(new RestoreJournal(path).pending().isEmpty());
+            service.move(true, 456);
+            assertEquals(310, position.get());
+            service.move(true, 789);
+            assertEquals(310, position.get());
+            assertEquals(1, new RestoreJournal(path).pending().size());
+            assertEquals(456, new RestoreJournal(path).pending().get(0).getJSONObject("identity").getLongValue("handle"));
+        } finally {
+            service.close();
+        }
     }
 }

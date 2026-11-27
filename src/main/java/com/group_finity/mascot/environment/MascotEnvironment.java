@@ -193,6 +193,11 @@ public class MascotEnvironment
         impl.moveActiveIE( point );
     }
 
+    public void throwActiveIE(boolean right)
+    {
+        if (getActiveIE().isVisible()) impl.throwActiveIE(right);
+    }
+
     public void restoreIE( )
     {
         impl.restoreIE( );

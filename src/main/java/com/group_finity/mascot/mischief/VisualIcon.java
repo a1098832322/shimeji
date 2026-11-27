@@ -9,16 +9,19 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import com.group_finity.mascot.Main;
 import com.group_finity.mascot.Mascot;
 import com.group_finity.mascot.glados.GladosEventReporter;
 import com.group_finity.mascot.glados.GladosOptions;
+import com.group_finity.mascot.util.DPIScaler;
 
-/** A pretend icon snack: never changes a file or an operating system icon. */
+/** Plays the icon snack animation, using an Explorer icon when available. */
 public final class VisualIcon {
     private static long lastCheck;
-    private static long lastSnack;
+    private static volatile long lastSnack;
     private static volatile JWindow bubble;
     private static volatile JWindow animation;
     private static long generation;
@@ -30,26 +33,47 @@ public final class VisualIcon {
         long now = System.currentTimeMillis();
         if (now - lastCheck < 5000 || now - lastSnack < 30000) return;
         lastCheck = now;
-        if (Math.random() >= 0.2 || !mascot.getEnvironment().getFloor().isOn(mascot.getAnchor())) return;
+        if (Math.random() >= 0.2) return;
         MischiefMode.runIfEnabled(() -> {
-          try {
-            mascot.setBehavior(Main.getInstance().getConfiguration(mascot.getImageSet()).buildBehavior("SitAndSpinHead", mascot));
-            lastSnack = now;
-            if (!isCurrent(request)) return;
-            final java.awt.Rectangle bounds = mascot.getBounds();
-            SwingUtilities.invokeLater(() -> showSnack(bounds, request));
-            if (GladosOptions.isManagedProcess()) {
-                GladosEventReporter.report("mischief", "{\"kind\":\"eatIcon\",\"id\":\"" + mascot.getInstanceId() + "\"}");
-            } else {
-                SwingUtilities.invokeLater(() -> show(bounds, request));
+            Rectangle bounds = mascot.getBounds();
+            boolean onFloor = mascot.getEnvironment().getFloor().isOn(mascot.getAnchor());
+            if (onFloor) {
+                try {
+                    mascot.setBehavior(Main.getInstance().getConfiguration(mascot.getImageSet())
+                        .buildBehavior("SitAndSpinHead", mascot));
+                } catch (Exception ignored) { /* Some skins omit the optional character animation. */ }
             }
-          } catch (Exception ignored) { /* The skin may not provide this optional animation. */ }
+            Point anchor = mascot.getAnchor();
+            Point physical = new Point(DPIScaler.logicalToPhysical(anchor.x), DPIScaler.logicalToPhysical(anchor.y));
+            String mascotId = mascot.getInstanceId();
+            if (!RecoverableWindowMoves.requestIcon(physical, moved -> {
+                if (moved != null || onFloor) present(bounds, request, mascotId, moved);
+            }) && onFloor) {
+                present(bounds, request, mascotId, null);
+            }
         });
     }
-    private static void show(java.awt.Rectangle bounds, long request) {
+
+    private static void present(Rectangle bounds, long request, String mascotId, Point moved) {
+        if (!isCurrent(request)) return;
+        lastSnack = System.currentTimeMillis();
+        Point origin = moved == null ? null :
+            new Point(DPIScaler.physicalToLogical(moved.x), DPIScaler.physicalToLogical(moved.y));
+        SwingUtilities.invokeLater(() -> {
+            if (!isCurrent(request)) return;
+            showSnack(bounds, request, origin);
+            if (GladosOptions.isManagedProcess()) {
+                GladosEventReporter.report("mischief", "{\"kind\":\"eatIcon\",\"id\":\"" + mascotId + "\"}");
+            } else {
+                show(bounds, request, origin != null);
+            }
+        });
+    }
+
+    private static void show(Rectangle bounds, long request, boolean moved) {
         if (!isCurrent(request)) return;
         JWindow window = new JWindow();
-        window.add(new JLabel("  我假装吃掉了一个图标～  "));
+        window.add(new JLabel(moved ? "  我吃掉了一个图标～  " : "  我假装吃掉了一个图标～  "));
         window.pack();
         window.setAlwaysOnTop(true);
         window.setLocation(bounds.x, Math.max(0, bounds.y - window.getHeight()));
@@ -59,8 +83,11 @@ public final class VisualIcon {
         timer.setRepeats(false); timer.start();
     }
 
-    /** A synthetic icon shrinks into the character; it never represents a real file. */
-    static void showSnack(java.awt.Rectangle bounds, long request) {
+    static void showSnack(Rectangle bounds, long request) {
+        showSnack(bounds, request, null);
+    }
+
+    private static void showSnack(Rectangle bounds, long request, Point origin) {
         if (!isCurrent(request)) return;
         JWindow window = new JWindow();
         window.setBackground(new Color(0, 0, 0, 0));
@@ -85,7 +112,9 @@ public final class VisualIcon {
         window.pack();
         window.setAlwaysOnTop(true);
         window.setFocusableWindowState(false);
-        window.setLocation(bounds.x + bounds.width / 2 - 32, bounds.y + bounds.height / 2 - 32);
+        Point destination = new Point(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+        Point start = origin == null ? destination : origin;
+        window.setLocation(start.x - 32, start.y - 32);
         animation = window;
         window.setVisible(true);
         Timer timer = new Timer(80, null);
@@ -94,7 +123,11 @@ public final class VisualIcon {
                 timer.stop();
                 window.dispose();
                 if (animation == window) animation = null;
-            } else drawing.repaint();
+            } else {
+                window.setLocation(start.x + (destination.x - start.x) * frame[0] / 17 - 32,
+                    start.y + (destination.y - start.y) * frame[0] / 17 - 32);
+                drawing.repaint();
+            }
         });
         timer.start();
     }

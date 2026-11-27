@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ResourceBundle;
@@ -74,7 +75,11 @@ public class ActionBuilder implements IActionBuilder {
             }
             catch( ConfigurationException e )
             {
-                throw new ConfigurationException( Main.getInstance( ).getLanguageBundle( ).getProperty( "FailedLoadActionErrorMessage" ) + " \"" + name + "\" " + Main.getInstance( ).getLanguageBundle( ).getProperty( "ForShimeji" ) + " \"" + imageSet + "\".", e );
+                final Properties bundle = Main.getInstance( ).getLanguageBundle( );
+                final String prefix = bundle == null ? "Failed to load action"
+                        : bundle.getProperty( "FailedLoadActionErrorMessage", "Failed to load action" );
+                final String forShimeji = bundle == null ? "for Shimeji" : bundle.getProperty( "ForShimeji", "for Shimeji" );
+                throw new ConfigurationException( prefix + " \"" + name + "\" " + forShimeji + " \"" + imageSet + "\".", e );
             }
 
 	}

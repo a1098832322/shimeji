@@ -8,13 +8,13 @@ import java.util.LinkedHashMap;
 
 import com.group_finity.mascot.environment.Area;
 import com.group_finity.mascot.environment.Environment;
+import com.group_finity.mascot.mischief.RecoverableWindowMoves;
 import com.group_finity.mascot.win.jna.Dwmapi;
 import com.group_finity.mascot.win.jna.Gdi32;
 import com.group_finity.mascot.win.jna.RECT;
 import com.group_finity.mascot.win.jna.User32;
-import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
-import com.sun.jna.ptr.LongByReference;
+import com.sun.jna.ptr.IntByReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,9 +113,9 @@ class WindowsEnvironment extends Environment
         {
             // metro apps can be closed or minimised and still be considered "visible" by User32
             // have to consider the new cloaked variable instead
-            LongByReference flagsRef = new LongByReference( );
-            NativeLong result = Dwmapi.INSTANCE.DwmGetWindowAttribute( ie, Dwmapi.DWMWA_CLOAKED, flagsRef, 8 );
-            if( result.longValue( ) != 0x80070057 && ( result.longValue( ) != 0 || flagsRef.getValue( ) != 0 ) ) // unsupported on 7 so skip the check
+            IntByReference flagsRef = new IntByReference( );
+            int result = Dwmapi.INSTANCE.DwmGetWindowAttribute( ie, Dwmapi.DWMWA_CLOAKED, flagsRef, Integer.BYTES );
+            if( result != 0x80070057 && ( result != 0 || flagsRef.getValue( ) != 0 ) ) // unsupported on 7 so skip the check
                 return IEResult.NOT_IE;
             
             //int flags = User32.INSTANCE.GetWindowLongW( ie, User32.GWL_STYLE );
@@ -327,6 +327,13 @@ class WindowsEnvironment extends Environment
     public void moveActiveIE( final Point point )
     {
         moveIE( findActiveIE(), new Rectangle( point.x, point.y, activeIE.getWidth(), activeIE.getHeight() ) );
+    }
+
+    @Override
+    public void throwActiveIE(boolean right)
+    {
+        if (activeIE.isVisible() && activeIEobject != null)
+            RecoverableWindowMoves.request(right, Pointer.nativeValue(activeIEobject));
     }
 
     @Override

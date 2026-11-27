@@ -92,7 +92,7 @@ public class AnimationBuilder
             }
             catch( final IOException e )
             {
-                throw new ConfigurationException( e.getMessage( ) );
+                throw new ConfigurationException( e.getMessage( ), e );
             }
             catch( final Exception e )
             {
@@ -289,12 +289,16 @@ public class AnimationBuilder
             {
                 ImagePairLoader.load( imageText, imageRightText, anchor, scaling, filter, opacity );
             }
-            catch( Exception e )
+            catch( final Exception e )
             {
-                String error = imageText.toString( );
+                final Properties bundle = Main.getInstance( ).getLanguageBundle( );
+                final String fallback = "Failed to load image";
+                final String prefix = bundle == null ? fallback
+                        : bundle.getProperty( "FailedLoadImageErrorMessage", fallback );
+                String paths = imageText.toAbsolutePath( ).toString( );
                 if( imageRightText != null )
-                    error += ", " + imageRightText.toString( );
-                throw new IOException( Main.getInstance( ).getLanguageBundle( ).getProperty( "FailedLoadImageErrorMessage" ) + " " + error );
+                    paths += ", " + imageRightText.toAbsolutePath( );
+                throw new ConfigurationException( prefix + " " + paths + " (" + describePose( ) + ")", e );
             }
         }
 

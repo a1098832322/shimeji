@@ -148,6 +148,8 @@ public class Main {
         java.nio.file.Path recoveryDir = recoveryHome != null && !recoveryHome.trim().isEmpty()
                 ? java.nio.file.Paths.get(recoveryHome) : java.nio.file.Paths.get(System.getProperty("user.home"), ".shimeji");
         com.group_finity.mascot.mischief.RecoverableWindowMoves.initialize(recoveryDir.resolve("mischief-restore.json"));
+        Runtime.getRuntime().addShutdownHook(new Thread(
+                com.group_finity.mascot.mischief.RecoverableWindowMoves::shutdown, "mischief-restore"));
 
         // GLaDOS 托管模式：禁止自主增殖（SplitIntoTwo / PullUpShimeji）。
         if (gladosOptions.isManaged()) {
