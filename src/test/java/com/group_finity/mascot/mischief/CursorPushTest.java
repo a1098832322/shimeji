@@ -39,4 +39,10 @@ public class CursorPushTest {
         assertFalse(CursorPush.reserve(34999, 15000));
         assertTrue(CursorPush.reserve(35000, 15000));
     }
+    @Test public void proximityUsesVisibleMascotBounds() {
+        Rectangle bounds = new Rectangle(100, 100, 120, 180);
+        assertTrue(CursorPush.nearMascot(bounds, new Point(110, 110)));
+        assertTrue(CursorPush.nearMascot(bounds, new Point(250, 200)));
+        assertFalse(CursorPush.nearMascot(bounds, new Point(300, 200)));
+    }
 }

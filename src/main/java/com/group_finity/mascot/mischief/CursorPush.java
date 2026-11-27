@@ -30,11 +30,10 @@ public final class CursorPush {
     static void resetForTest() { lastAttempt = 0; capability = "supported"; }
     public static String capability() { return capability; }
     public static void tick(Mascot mascot) {
-        if (!MischiefMode.isCursorEnabled() || "unsupported".equals(capability) || mascot.getBehavior() == null ||
-            !"Behavior(ChaseMouse)".equals(mascot.getBehavior().toString())) return;
+        if (!MischiefMode.isCursorEnabled() || "unsupported".equals(capability)) return;
         try {
             Point pointer = MouseInfo.getPointerInfo().getLocation();
-            if (mascot.getAnchor().distance(pointer) > 100) return;
+            if (!nearMascot(mascot.getBounds(), pointer)) return;
             long interval = Math.max(15000, Long.parseLong(Main.getInstance().getProperties().getProperty("Mischief.PushCursorInterval", "15000")));
             if (!reserve(System.currentTimeMillis(), interval)) return;
             WORKER.execute(() -> push(() -> new Pointer() {
@@ -43,6 +42,11 @@ public final class CursorPush {
                 public void move(Point position) { robot.mouseMove(position.x, position.y); }
             }));
         } catch (Exception | LinkageError e) { capability = "unsupported"; }
+    }
+    static boolean nearMascot(Rectangle bounds, Point pointer) {
+        Rectangle area = new Rectangle(bounds);
+        area.grow(40, 40);
+        return area.contains(pointer);
     }
     private static void push(PointerFactory factory) {
         try { push(factory.create()); } catch (Exception | LinkageError e) { capability = "unsupported"; }
